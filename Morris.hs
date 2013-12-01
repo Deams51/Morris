@@ -2,6 +2,8 @@ module Morris where
  
 import Test.QuickCheck
 import Data.List
+import Data.Maybe
+import Data.Sequence
 
 data Morris = Morris {rows :: [[Maybe Cell]]}
   deriving ( Show, Eq )
@@ -45,11 +47,11 @@ blankMorris = Morris
 
 -- Checks if a piece can be placed in the position
 isEmpty :: Morris -> Pos -> Bool
-isEmpty m p = undefined
+isEmpty m (x,y) = isNothing((rows m!!y)!!x)
 
 -- 
 addPiece :: Morris -> Pos -> Pos -> Player -> Bool
-addPiece m p pl = undefined
+addPiece m (xOld,yOld) (xNew,yNew) pl = undefined
 
 -- Check if current cell is in a mill
 isInMill :: Morris -> Pos -> Bool 
