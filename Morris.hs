@@ -4,17 +4,23 @@ import Test.QuickCheck
 import Data.List
 import Data.Maybe
 import Data.Sequence
-
-data Morris = Morris {rows :: Seq( Seq(Maybe Cell)) }
-  deriving ( Show, Eq )
-
---           Phase,PlA,PlB
-type Game = (Int, Int, Int)
+import Data.Foldable (toList)
 
 data Cell = PlayerA | PlayerB | Closed 
   deriving (Show, Eq)
 
 type Pos = (Int,Int)
+
+data Morris = Morris {rows :: Seq( Seq(Maybe Cell)) }
+  deriving ( Show, Eq )
+
+--           Phase,PlA,PlB
+type State = (Int, Int, Int)
+type Game = (Morris, State)
+
+type TurnP1 = (Int, Int)
+
+
 
 blankMorris = Morris ( 
      fromList [
@@ -26,6 +32,9 @@ blankMorris = Morris (
     , fromList [Just Closed, Nothing, Just Closed, Nothing, Just Closed, Nothing, Just Closed]
     , fromList [Nothing, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Nothing]
     ])
+
+newGame :: Game
+newGame = (blankMorris,(0,0,0))
 
 verticalMills :: [[Pos]]
 verticalMills = 
@@ -41,8 +50,7 @@ verticalMills =
   ]
 
 horizontalMills :: [[Pos]]
-horizontalMills = [[(y,x)|(x,y)<-mill] |mill<-v]
-  where v = verticalMills
+horizontalMills = [[(y,x)|(x,y)<-mill] |mill<-verticalMills]
   
 possibleMills :: [[Pos]]
 possibleMills = verticalMills ++ horizontalMills
@@ -54,15 +62,16 @@ possibleMills = verticalMills ++ horizontalMills
 --blankMorris :: Morris
 --blankMorris = Morris [[Nothing | x<-[0..6]] | x<-[0..6]]
 
---printMorris :: Morris -> IO ()
---printMorris s = putStr (unlines (map (map cellToChar) (rows s)))
+printMorris :: Morris -> IO ()
+printMorris s = putStr (unlines (map (map cellToChar) list))
+  where list = [toList x | x<-toList(rows s)]
 
 -- Translates Cell into printable values
---cellToChar :: Maybe Cell -> Char
---cellToChar (Just PlayerA) = 'A'
---cellToChar (Just PlayerB) = 'B'
---cellToChar (Just Closed)  = ' ' 
---cellToChar Nothing        = 'O'
+cellToChar :: Maybe Cell -> Char
+cellToChar (Just PlayerA) = 'A'
+cellToChar (Just PlayerB) = 'B'
+cellToChar (Just Closed)  = ' ' 
+cellToChar Nothing        = 'O'
 
 -- Phase 1:
 -- Adding_a_piece morris player (a,b)
@@ -112,11 +121,59 @@ removePiece :: Morris -> Pos -> Morris
 removePiece m (x,y) = Morris(update y new (rows m))
   where new = update x Nothing (index (rows m) y) 
 
+nextTurnP1 :: Game -> IO Game
+nextTurnP1 (m,p) = do 
+    printMorris m
+    t <- inputTurnP1 (m,p)
+    play $ (addPiece m t PlayerA,p)
 
+nextTurnP2 :: Game -> IO Game
+nextTurnP2 g = return g
 
- 
+-- Check if a game is done
+  -- ie : State superior to 1 and one player with less than 4 stones
+isDone :: Game -> Bool
+isDone (m,(s,p1,p2)) = (s>1) && ((p1<4)||(p2<4))
+
+isPhase1 :: Game -> Bool
+isPhase1 (m,(s,p1,p2)) = (s<2) && (p1<9) && (p2<9) 
   
 
+play :: Game -> IO Game
+play g  | isDone g    = return g
+        | isPhase1 g  = nextTurnP1 g >>= play
+        | otherwise   = nextTurnP2 g >>= play
+
+
+
+
+
+
+inputTurnP1 :: Game -> IO TurnP1
+inputTurnP1 (m,s) = do 
+    x<- promptIntFromRange "x" (0,7)
+    y<- promptIntFromRange "y" (0,7)
+    return (x, y)
+
+
+promptIntFromRange :: String -> (Int, Int) -> IO Int
+promptIntFromRange msg (from, to) = promptInt newMsg inRange 
+  where newMsg = concat [msg, "[", show from, ";", show to, "]"]
+        inRange v = v >= from && v <= to
+
+promptInt :: String -> (Int -> Bool) -> IO Int
+promptInt msg p = do 
+    putStr (msg ++ "> ")
+    mx <- maybeReadLn
+    case mx of
+        Just x | p x -> return x
+        _            -> promptInt msg p
+
+maybeReadLn :: (Read a) => IO (Maybe a)
+maybeReadLn = fmap maybeRead getLine
+
+maybeRead :: (Read a) => String -> Maybe a
+maybeRead str = listToMaybe [x | (x, "") <- reads str]
 --Phase 2 
 -- CanMove old_pos new_pos
 -- possibleMoves Pos
