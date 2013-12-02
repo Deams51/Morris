@@ -30,14 +30,14 @@ blankMorris = Morris (
 verticalMills :: [[Pos]]
 verticalMills = 
   [ 
-    [(1,1),(1,4),(1,7)],
-    [(2,2),(2,4),(2,6)],
-    [(3,3),(3,4),(3,5)],
-    [(4,1),(4,2),(4,3)],
-    [(4,5),(4,6),(4,7)],
-    [(5,3),(5,4),(5,5)],
-    [(6,2),(6,4),(6,6)],
-    [(7,1),(7,4),(7,7)]
+    [(0,0),(0,3),(0,6)],
+    [(1,1),(1,3),(1,5)],
+    [(2,2),(2,3),(2,4)],
+    [(3,0),(3,1),(3,2)],
+    [(3,4),(3,5),(3,6)],
+    [(4,2),(4,3),(4,4)],
+    [(5,1),(5,3),(5,5)],
+    [(6,0),(6,3),(6,6)]
   ]
 
 horizontalMills :: [[Pos]]
@@ -82,7 +82,7 @@ isValidPos m (x,y) = isNothing(value) && value /= (Just Closed)
 isUsed :: Morris -> Cell -> Pos -> Bool
 isUsed m pl (x,y) = value == Just pl
   where value = getValue m (x,y)
-  
+
 -- Check if a stone is in a mill
   --in a mill if pos a stone and if in list of mills and a mill
 isInMill :: Morris -> Pos -> Bool 
@@ -104,12 +104,13 @@ addPiece m (x,y) pl = Morris(update y new (rows m))
 
 -- Move a piece from oldPos to newPos
 movePiece :: Morris -> Pos -> Pos -> Morris
-movePiece m (xOld,yOld) (x,y) = undefined 
+movePiece m pOld p = addPiece (removePiece m p) p pl
+  where Just pl = getValue m p
 
 -- Remove a piece
-removePiece :: Morris -> Pos -> Bool
-removePiece m p = undefined  
-
+removePiece :: Morris -> Pos -> Morris
+removePiece m (x,y) = Morris(update y new (rows m))
+  where new = update x Nothing (index (rows m) y) 
 
 
 
