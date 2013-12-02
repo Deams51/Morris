@@ -68,7 +68,7 @@ possibleMills = verticalMills ++ horizontalMills
 -- Adding_a_piece morris player (a,b)
 --  only add the piece from player to (a,b) if (a,b) is Nothing
 
--- Return value of (x,y) in morris
+-- Return value of (x,y) Cell in morris
 getValue :: Morris -> Pos -> Maybe Cell
 getValue m (x,y) = index (index (rows m) y) x
 
