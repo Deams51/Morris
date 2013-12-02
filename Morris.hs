@@ -78,6 +78,25 @@ isValidPos :: Morris -> Pos -> Bool
 isValidPos m (x,y) = isNothing(value) && value /= (Just Closed)
   where value = getValue m (x,y)
 
+-- Checks if a position contains a piece from a player
+isUsed :: Morris -> Cell -> Pos -> Bool
+isUsed m pl (x,y) = value == Just pl
+  where value = getValue m (x,y)
+  
+-- Check if a stone is in a mill
+  --in a mill if pos a stone and if in list of mills and a mill
+isInMill :: Morris -> Pos -> Bool 
+isInMill m (x,y)  | not(isValidPos m (x,y)) = False
+                  | otherwise = or[and[getValue m pos == current |pos<-mill] | mill<-listMills]
+  where listMills = Data.List.filter (elem (x,y)) possibleMills
+        current = getValue m (x,y)
+
+-- Check if all the stones from a player are in a mill
+allMill :: Morris -> Cell -> Bool
+allMill m p = and[isInMill m x | x<-playerPos]
+  where allPos = [(x,y) | x<-[1..7], y<-[1..7]]
+        playerPos = Data.List.filter (isUsed m p) allPos
+
 -- Add a piece to the board at newPos
 addPiece :: Morris -> Pos -> Cell -> Morris
 addPiece m (x,y) pl = Morris(update y new (rows m))
@@ -87,20 +106,12 @@ addPiece m (x,y) pl = Morris(update y new (rows m))
 movePiece :: Morris -> Pos -> Pos -> Morris
 movePiece m (xOld,yOld) (x,y) = undefined 
 
--- Check if a stone is in a mill
-  --in a mill if pos a stone and if in list of mills and a mill
-isInMill :: Morris -> Pos -> Bool 
-isInMill m (x,y)  | not(isValidPos m (x,y)) = False
-                  | otherwise = or[and[getValue m pos == current |pos<-mill] | mill<-listMills]
-  where listMills = Data.List.filter (elem (x,y)) possibleMills
-        current = getValue m (x,y)
-
-allMill :: Morris -> Cell -> Bool
-allMill m p = undefined
-
--- Tries to remove a piece
+-- Remove a piece
 removePiece :: Morris -> Pos -> Bool
 removePiece m p = undefined  
+
+
+
 
  
   
