@@ -1,10 +1,11 @@
 module Morris where
  
 import Test.QuickCheck
-import Data.List
-import Data.Maybe
-import Data.Sequence
+import Data.List (filter)
+import Data.Maybe (isNothing)
+import Data.Sequence (Seq, fromList, index, update)
 import Data.Foldable (toList)
+import Utils
 
 data Cell = PlayerA | PlayerB | Closed 
   deriving (Show, Eq)
@@ -21,8 +22,6 @@ type Game = (Morris, Int)
 
 type TurnP1 = (Int, Int)
 
-
-
 blankMorris = Morris ( 
      fromList [
       fromList [Nothing, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Nothing]
@@ -36,6 +35,21 @@ blankMorris = Morris (
 
 newGame :: Game
 newGame = (blankMorris,0)
+
+-- Example of phase 2 Morris to debug
+p2Morris = Morris ( 
+     fromList [
+      fromList [Just PlayerA, Just Closed, Just Closed, Just PlayerA, Just Closed, Just Closed, Nothing]
+    , fromList [Just Closed, Just PlayerA, Just Closed, Just PlayerA, Just Closed, Nothing, Just Closed]
+    , fromList [Just Closed, Just Closed, Just PlayerB, Just PlayerB, Nothing, Just Closed, Just Closed]
+    , fromList [Just PlayerB, Just PlayerA, Nothing, Just Closed, Just PlayerA, Just PlayerB, Just PlayerB]
+    , fromList [Just Closed, Just Closed, Just PlayerB, Just PlayerA, Nothing, Just Closed, Just Closed]
+    , fromList [Just Closed, Nothing, Just Closed, Just PlayerA, Just Closed, Just PlayerB, Just Closed]
+    , fromList [Just PlayerA, Just Closed, Just Closed, Just PlayerB, Just Closed, Just Closed, Just PlayerB]
+    ])
+
+p2Game :: Game
+p2Game = (p2Morris,8)
 
 verticalMills :: [[Pos]]
 verticalMills = 
@@ -68,7 +82,7 @@ printMorris s = putStr (unlines (map (map cellToChar) list))
 cellToChar :: Maybe Cell -> Char
 cellToChar (Just PlayerA) = 'A'
 cellToChar (Just PlayerB) = 'B'
-cellToChar (Just Closed)  = ' ' 
+cellToChar (Just Closed)  = '.' 
 cellToChar Nothing        = 'O'
 
 -- Phase 1:
@@ -84,11 +98,6 @@ getValue m (x,y) = index (index (rows m) y) x
 isValidPos :: Morris -> Pos -> Bool
 isValidPos m (x,y) = isNothing(value) && value /= (Just Closed)
   where value = getValue m (x,y)
-
--- Checks if a move from posF to posT is valid
-  -- For a move to be valid from posF, posT must be in a mill with PosF 
-isValidMove :: Morris -> Pos -> Pos -> Bool
-isValidMove = undefined
 
 -- Checks if a position contains a piece from a player
 isUsed :: Morris -> Cell -> Pos -> Bool
@@ -124,17 +133,6 @@ removePiece :: Morris -> Pos -> Morris
 removePiece m (x,y) = Morris(update y new (rows m))
   where new = update x Nothing (index (rows m) y) 
 
-nextTurnP1 :: Game ->  IO Game
-nextTurnP1 (m,s) = do 
-    printMorris m
-    posA <- inputTurnP1 (m,s)
-    printMorris (addPiece m posA PlayerA)
-    posB <- inputTurnP1 (addPiece m posA PlayerA,s+1)
-    play $ (addPiece (addPiece m posA PlayerA) posB PlayerB,s+1)
-
-nextTurnP2 :: Game -> IO Game
-nextTurnP2 g = return g
-
 -- Check if a game is done
   -- ie : State superior to 1 and one player with less than 4 stones
 isDone :: Game -> Bool
@@ -142,18 +140,12 @@ isDone (m,t) = False
 
 -- Check if still in Phase 1
 isPhase1 :: Game -> Bool
-isPhase1 (m,t) = t<18 
-  
+isPhase1 (m,t) = t<8 
 
 play :: Game -> IO Game
 play g  | isDone g    = return g
         | isPhase1 g  = nextTurnP1 g >>= play
         | otherwise   = nextTurnP2 g >>= play
-
-
-
-
-
 
 inputTurnP1 :: Game -> IO TurnP1
 inputTurnP1 (m,s) = do 
@@ -166,25 +158,18 @@ inputTurnP1 (m,s) = do
         (x,y) <- inputTurnP1 (m,s)
         return (x,y)
 
+nextTurnP1 :: Game ->  IO Game
+nextTurnP1 (m,s) = do 
+    printMorris m
+    putStrLn ("Phase 1 - Turn : " ++ show s)
+    putStrLn ("Player A")
+    posA <- inputTurnP1 (m,s)
+    printMorris (addPiece m posA PlayerA)
+    putStrLn ("Player B")
+    posB <- inputTurnP1 (addPiece m posA PlayerA,s+1)
+    play $ (addPiece (addPiece m posA PlayerA) posB PlayerB,s+1)
 
-promptIntFromRange :: String -> (Int, Int) -> IO Int
-promptIntFromRange msg (from, to) = promptInt newMsg inRange 
-  where newMsg = concat [msg, "[", show from, ";", show to, "]"]
-        inRange v = v >= from && v <= to
 
-promptInt :: String -> (Int -> Bool) -> IO Int
-promptInt msg p = do 
-    putStr (msg ++ "> ")
-    mx <- maybeReadLn
-    case mx of
-        Just x | p x -> return x
-        _            -> promptInt msg p
-
-maybeReadLn :: (Read a) => IO (Maybe a)
-maybeReadLn = fmap maybeRead getLine
-
-maybeRead :: (Read a) => String -> Maybe a
-maybeRead str = listToMaybe [x | (x, "") <- reads str]
 --Phase 2 
 -- CanMove old_pos new_pos
 -- possibleMoves Pos
@@ -195,9 +180,27 @@ maybeRead str = listToMaybe [x | (x, "") <- reads str]
       return (Sudoku rows)
 
 sequence :: Monad m => [m a] -> m [a]
-
-
 -}
+
+-- Checks if a move from posF to posT is valid
+  -- For a move to be valid from posF, posT must be in a possible mill with PosF 
+isValidMove :: Morris -> Pos -> Pos -> Maybe Cell -> Bool
+isValidMove m posF posT p = (isValidPos m posT)
+                          && isPlayer m posF p
+                          && or[elem posF mills && elem posT mills | mills<-possibleMills]
+
+isPlayer :: Morris -> Pos -> Maybe Cell -> Bool
+isPlayer m (x,y) p = index (index (rows m) y) x == p
+
+
+nextTurnP2 :: Game -> IO Game
+nextTurnP2 g = do
+                putStrLn "Phase 2"
+                return g
+
+
+-- Properties related func 
+
 cell :: Int -> Int -> Gen (Maybe Cell)
 cell a b = frequency
        [
