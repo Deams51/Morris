@@ -9,6 +9,7 @@ import Utils
 import Control.Monad (when)
 import Control.Exception.Base (evaluate)
 
+
 data Cell = PlayerA | PlayerB | Closed 
   deriving (Show, Eq)
 
@@ -134,7 +135,8 @@ allMill m p = and[isInMill m x | x<-playerPos]
 
 -- Add a piece to the board at newPos
 addPiece :: Morris -> Pos -> Cell -> Morris
-addPiece m (x,y) pl = Morris(update y new (rows m))
+addPiece m (x,y) pl | not $ isValidPos m (x,y) = m
+                    | otherwise = Morris(update y new (rows m))
   where new = update x (Just pl) (index (rows m) y)  
 
 -- Move a piece from oldPos to newPos
@@ -205,6 +207,8 @@ nextTurnP1 (m,s,c) = do
 sequence :: Monad m => [m a] -> m [a]
 -}
 
+
+
 -- Checks if a stone belongs to a player
 isPlayer :: Morris -> Pos -> Maybe Cell -> Bool
 isPlayer m pos p = getValue m pos == p
@@ -263,10 +267,27 @@ isDone (m,t,c) = numberStones m PlayerA <4
 
 -- Properties related func 
 
-cell :: Int -> Int -> Gen (Maybe Cell)
-cell a b = frequency
+cell :: Gen (Cell)
+cell = frequency
        [
-         (1, return Nothing)
-       , (a, return (Just PlayerA))
-       , (b, return (Just PlayerB))                
+        (1, return PlayerA)
+       , (1, return PlayerB)                
        ]
+
+instance Arbitrary Morris where
+  arbitrary = 
+    do
+      return blankMorris
+
+instance Arbitrary Cell where
+  arbitrary = 
+    do
+      c<- cell
+      return c
+
+prop_addPiece :: Morris -> Pos -> Cell -> Bool
+prop_addPiece m (x,y) c | not $ isValidPos m (x',y') = m == mN 
+                        | otherwise = getValue mN (x',y') == Just c
+  where x' = abs $ mod x 7
+        y' = abs $ mod y 7
+        mN = (addPiece m (x',y') c)
