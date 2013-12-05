@@ -15,8 +15,9 @@ data Morris = Morris {rows :: Seq( Seq(Maybe Cell)) }
   deriving ( Show, Eq )
 
 --           Phase,PlA,PlB
-type State = (Int, Int, Int)
-type Game = (Morris, State)
+--type State = (Int, Int, Int)
+-- A Game is a Morris board and a number of turns played
+type Game = (Morris, Int)
 
 type TurnP1 = (Int, Int)
 
@@ -34,7 +35,7 @@ blankMorris = Morris (
     ])
 
 newGame :: Game
-newGame = (blankMorris,(0,0,0))
+newGame = (blankMorris,0)
 
 verticalMills :: [[Pos]]
 verticalMills = 
@@ -54,9 +55,6 @@ horizontalMills = [[(y,x)|(x,y)<-mill] |mill<-verticalMills]
   
 possibleMills :: [[Pos]]
 possibleMills = verticalMills ++ horizontalMills
-
-
-
 
 
 --blankMorris :: Morris
@@ -121,11 +119,13 @@ removePiece :: Morris -> Pos -> Morris
 removePiece m (x,y) = Morris(update y new (rows m))
   where new = update x Nothing (index (rows m) y) 
 
-nextTurnP1 :: Game -> IO Game
-nextTurnP1 (m,p) = do 
+nextTurnP1 :: Game ->  IO Game
+nextTurnP1 (m,s) = do 
     printMorris m
-    t <- inputTurnP1 (m,p)
-    play $ (addPiece m t PlayerA,p)
+    posA <- inputTurnP1 (m,s)
+    printMorris (addPiece m posA PlayerA)
+    posB <- inputTurnP1 (addPiece m posA PlayerA,s+1)
+    play $ (addPiece (addPiece m posA PlayerA) posB PlayerB,s+1)
 
 nextTurnP2 :: Game -> IO Game
 nextTurnP2 g = return g
@@ -133,10 +133,11 @@ nextTurnP2 g = return g
 -- Check if a game is done
   -- ie : State superior to 1 and one player with less than 4 stones
 isDone :: Game -> Bool
-isDone (m,(s,p1,p2)) = (s>1) && ((p1<4)||(p2<4))
+isDone (m,t) = False
 
+-- Check if still in Phase 1
 isPhase1 :: Game -> Bool
-isPhase1 (m,(s,p1,p2)) = (s<2) && (p1<9) && (p2<9) 
+isPhase1 (m,t) = t<18 
   
 
 play :: Game -> IO Game
@@ -151,9 +152,14 @@ play g  | isDone g    = return g
 
 inputTurnP1 :: Game -> IO TurnP1
 inputTurnP1 (m,s) = do 
-    x<- promptIntFromRange "x" (0,7)
-    y<- promptIntFromRange "y" (0,7)
-    return (x, y)
+    x<- promptIntFromRange "x" (0,6)
+    y<- promptIntFromRange "y" (0,6)
+    if (isValidPos m (x,y))
+      then return (x, y)
+      else do
+        putStrLn "Invalid position, try again." 
+        (x,y) <- inputTurnP1 (m,s)
+        return (x,y)
 
 
 promptIntFromRange :: String -> (Int, Int) -> IO Int
@@ -177,4 +183,20 @@ maybeRead str = listToMaybe [x | (x, "") <- reads str]
 --Phase 2 
 -- CanMove old_pos new_pos
 -- possibleMoves Pos
- 
+{-
+ instance Arbitrary Sudoku where
+ arbitrary =
+   do rows <- sequence [ sequence [ cell | j <- [1..9] ] | i <- [1..9] ]
+      return (Sudoku rows)
+
+sequence :: Monad m => [m a] -> m [a]
+
+
+-}
+cell :: Int -> Int -> Gen (Maybe Cell)
+cell a b = frequency
+       [
+         (1, return Nothing)
+       , (a, return (Just PlayerA))
+       , (b, return (Just PlayerB))                
+       ]
