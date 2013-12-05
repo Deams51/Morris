@@ -85,6 +85,11 @@ isValidPos :: Morris -> Pos -> Bool
 isValidPos m (x,y) = isNothing(value) && value /= (Just Closed)
   where value = getValue m (x,y)
 
+-- Checks if a move from posF to posT is valid
+  -- For a move to be valid from posF, posT must be in a mill with PosF 
+isValidMove :: Morris -> Pos -> Pos -> Bool
+isValidMove = undefined
+
 -- Checks if a position contains a piece from a player
 isUsed :: Morris -> Cell -> Pos -> Bool
 isUsed m pl (x,y) = value == Just pl
