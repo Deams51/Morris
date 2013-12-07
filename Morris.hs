@@ -59,7 +59,7 @@ p2Morris = Morris (
     ])
 
 p2Game :: Game
-p2Game = (p2Morris,8, PlayerA)
+p2Game = (p2Morris,18, PlayerA)
 
 verticalMills :: [[Pos]]
 verticalMills = 
@@ -146,9 +146,10 @@ movePiece m pOld p = removePiece (addPiece m p pl) pOld
 
 -- Remove a piece
 removePiece :: Morris -> Pos -> Morris
-removePiece m (x,y) = Morris(update y new (rows m))
+removePiece m (x,y) |  val == Just Closed  || isNothing val = m
+                    | otherwise = Morris(update y new (rows m))
   where new = update x Nothing (index (rows m) y) 
-
+        val = getValue m (x,y)
 -- Check if still in Phase 1
 isPhase1 :: Game -> Bool
 isPhase1 (m,t,c) = t<18
@@ -207,8 +208,6 @@ nextTurnP1 (m,s,c) = do
 sequence :: Monad m => [m a] -> m [a]
 -}
 
-
-
 -- Checks if a stone belongs to a player
 isPlayer :: Morris -> Pos -> Maybe Cell -> Bool
 isPlayer m pos p = getValue m pos == p
@@ -219,6 +218,7 @@ isValidMove :: Morris -> Pos -> Pos -> Maybe Cell -> Bool
 isValidMove m posF posT p = (isValidPos m posT)
                           && isPlayer m posF p
                           && or[elem posF mills && elem posT mills | mills<-possibleMills]
+                          && not (isNothing p)
 
 numberStones :: Morris -> Cell -> Int
 numberStones m c = (length $ filter (== Just c) l )
@@ -266,13 +266,13 @@ isDone (m,t,c) = numberStones m PlayerA <4
               || numberStones m PlayerB <4
 
 -- Properties related func 
-
 cell :: Gen (Cell)
 cell = frequency
        [
-        (1, return PlayerA)
-       , (1, return PlayerB)                
+        (1, return PlayerA),
+        (1, return PlayerB)                
        ]
+
 
 instance Arbitrary Morris where
   arbitrary = 
@@ -285,9 +285,30 @@ instance Arbitrary Cell where
       c<- cell
       return c
 
+
 prop_addPiece :: Morris -> Pos -> Cell -> Bool
 prop_addPiece m (x,y) c | not $ isValidPos m (x',y') = m == mN 
                         | otherwise = getValue mN (x',y') == Just c
   where x' = abs $ mod x 7
         y' = abs $ mod y 7
-        mN = (addPiece m (x',y') c)
+        mN = addPiece m (x',y') c
+
+prop_removePiece :: Morris -> Pos -> Bool
+prop_removePiece m (x,y)  | (val == Just Closed) = mN == m
+                          | otherwise = getValue mN (x',y') == Nothing 
+  where x'  = abs $ mod x 7
+        y'  = abs $ mod y 7
+        mN  = removePiece m (x',y')
+        val = getValue m (x',y')
+
+-- Need to check that the new morris have the piece at the right position
+  -- if the move is not valid then the morris remains the same
+{- prop_movePiece :: Morris -> Pos -> Pos -> Cell -> Bool
+prop_movePiece m (x,y) (xT,yT) c  | isValidMove m (x',y') (xT',yT') (Just c) = getValue m (x',y') == getValue m (xT',yT')
+                                  | otherwise = m == mN
+  where x'  = abs $ mod x 7
+        y'  = abs $ mod y 7
+        xT' = abs $ mod xT 7
+        yT' = abs $ mod yT 7
+        mN  = movePiece m (x',y') (xT',yT')
+-}
