@@ -1,7 +1,7 @@
 module Morris where
  
 import Test.QuickCheck
-import Data.List (filter)
+import Data.List (filter, nub)
 import Data.Maybe (isNothing)
 import Data.Sequence (Seq, fromList, index, update)
 import Data.Foldable (toList)
@@ -264,6 +264,32 @@ play g  | isPhase1 g  = nextTurnP1 g >>= play
 isDone :: Game -> Bool
 isDone (m,t,c) = numberStones m PlayerA <4
               || numberStones m PlayerB <4
+
+
+---
+
+-- gives the current value of the Morris a rating 
+rateMorris :: Morris -> Maybe Cell -> Integer
+rateMorris m c = undefined
+
+-- returns all possible moves of a player
+possibleMoves :: Morris -> Maybe Cell -> [Pos]
+possibleMoves m p = myCells
+  where myCells = filter (\x -> isPlayer m x p) (nub $ concat possibleMills)
+
+-- returns the possible moves of a cell
+cellMoves :: Morris -> Pos -> Maybe Cell -> (Maybe Cell, [Pos])
+cellMoves m (x,y) c = undefined --  (c, possibleMills)
+  --where possibles = [[elem (x,y) mills && elem posT mills | mills<-possibleMills] | posT <- []]
+
+cellMoves' :: Pos -> Pos -> Bool
+cellMoves' (xf, yf) (xt, yt) = (abs $ xf - xt) < 2 && (abs $ yf - yt) < 2
+--finna allar hinar pos i mil sem inniheldur þetta pos
+
+
+--ble m (x,y) =  [[elem (x,y) mills && elem posT mills | mills<-possibleMills] | posT <- (rows m)]
+
+
 
 -- Properties related func 
 cell :: Gen (Cell)
