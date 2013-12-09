@@ -8,6 +8,7 @@ import Data.Foldable (toList)
 import Utils
 import Control.Monad (when)
 import Control.Exception.Base (evaluate)
+import Data.Maybe (fromJust)
 
 
 data Cell = PlayerA | PlayerB | Closed 
@@ -268,28 +269,36 @@ isDone (m,t,c) = numberStones m PlayerA <4
 
 ---
 
+
+--no nrecursive prototype, fix
+
+--emulate :: Morris -> Maybe Cell -> Pos
+emulate m c  =  [(fst x
+                 ,[(rateMorris (movePiece m (fst x) z) (fromJust c), z) 
+                  | z<-(snd x)]) 
+                | x<-(possibleMoves p2Morris (Just PlayerB))]
+  where x    = [x | x<-(possibleMoves m c)]
+        
+
 -- gives the current value of the Morris a rating 
-rateMorris :: Morris -> Maybe Cell -> Integer
-rateMorris m c = undefined
+rateMorris :: Morris -> Cell -> Int
+rateMorris m c = f c - f (opponent c)
+  where list = concat [toList x | x<-toList(rows m)]
+        f x  = length.filter (==(Just x)) $ list
 
 -- returns all possible moves of a player
-possibleMoves :: Morris -> Maybe Cell -> [Pos]
-possibleMoves m p = myCells
-  where myCells = filter (\x -> isPlayer m x p) (nub $ concat possibleMills)
+possibleMoves :: Morris -> Maybe Cell -> [(Pos, [Pos])]
+possibleMoves m c = [cellMoves m x c | x <-myCells]
+  where myCells = filter (\x -> isPlayer m x c) (nub $ concat possibleMills)
+
+-- not returning a correct result, blame isValidMove
+-- cellMoves p2Morris (1,1) (Just PlayerA)
 
 -- returns the possible moves of a cell
-cellMoves :: Morris -> Pos -> Maybe Cell -> (Maybe Cell, [Pos])
-cellMoves m (x,y) c = undefined --  (c, possibleMills)
-  --where possibles = [[elem (x,y) mills && elem posT mills | mills<-possibleMills] | posT <- []]
-
-cellMoves' :: Pos -> Pos -> Bool
-cellMoves' (xf, yf) (xt, yt) = (abs $ xf - xt) < 2 && (abs $ yf - yt) < 2
---finna allar hinar pos i mil sem inniheldur þetta pos
-
-
---ble m (x,y) =  [[elem (x,y) mills && elem posT mills | mills<-possibleMills] | posT <- (rows m)]
-
-
+cellMoves :: Morris -> Pos -> Maybe Cell -> (Pos, [Pos])
+cellMoves m p c = (p, filter (\x -> isValidMove m p x c) allCord)
+  where allCord = [(x,y) | x<-[0..6], y<-[0..6]]
+        
 
 -- Properties related func 
 cell :: Gen (Cell)
@@ -298,7 +307,6 @@ cell = frequency
         (1, return PlayerA),
         (1, return PlayerB)                
        ]
-
 
 instance Arbitrary Morris where
   arbitrary = 
