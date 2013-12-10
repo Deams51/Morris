@@ -16,7 +16,7 @@ data Cell = PlayerA | PlayerB | Closed
   deriving (Show, Eq)
 
 type Pos = (Int,Int)
-type Move = (Pos,Pos)
+type Move = (Pos,Pos) 
 
 
 data Morris = Morris {rows :: Seq( Seq(Maybe Cell)) }
@@ -304,8 +304,11 @@ isDone (m,t,c) = numberStones m PlayerA <4
 makeTree :: (Morris,Maybe Cell) -> Int -> Tree A
 makeTree (m,Just p) d = unfoldTree evaluateMorris ((9,9),Just p,d,0,m)  
 
+<<<<<<< HEAD
 type A = (Pos, Maybe Cell, Int, Int, Morris) -- Int == rate
 type B = A -- (Maybe Cell, Morris)
+=======
+>>>>>>> 28af2f24143cb9da09aa6b6319f1b51c3d438869
 
 -- Returns all the possible resulting Morris  
 evaluateMorris :: B -> (A,[B])
@@ -348,8 +351,20 @@ cellMoves m p c = (p, filter (\x -> isValidMove m p x c) allCord)
 -- returns coordinates of all places on the table not occupied by a stone
 possiblePlaces :: Morris -> [Pos]        
 possiblePlaces m = map (\(x,y) -> x) $ filter (\(x,y) -> y == Nothing) 
-                   $ zip [(x,y) | x<-[0..7], y<-[0..7]] 
+                   $ zip [(x,y) | x<-[0..6], y<-[0..6]] 
                    $ concat [toList x | x<-toList(rows m)]
+
+
+-- possiblePlaces ... place all
+  -- check if mil
+      -- remove enemy piece if mill
+-- repeat for enemy
+--phaseOneAI :: Morris ->
+--phaseOneAI m c d = Node m [x | x<-ps]
+--  where ps = possiblePlaces m
+
+--evaluateMorris :: B -> (A,[B])
+--evaluateMorris b = 
 
 
 -- Properties related func 
