@@ -178,6 +178,7 @@ turnP1 (m,s,c) = do
 nextTurnP1 :: Game ->  IO Game
 nextTurnP1 (m,s,c) = do 
     printMorris m
+    putStrLn ""
     putStrLn ("Phase 1 - Turn : " ++ show s)
     (m,s,c) <- turnP1 (m,s,c)
     playAI (m,s+1,opponent c)
@@ -195,6 +196,7 @@ turnP1AI :: Game -> IO Game
 turnP1AI (m,s,c) = do
     putStrLn ((show c) ++ " turn")
     let (pos,del) = bestMoveP1 (constructTreeP1 [[(m,[],[],c)]] c 5) c 
+    putStrLn ("AI choose : " ++ show pos)
     mT <- evaluate (addPiece m pos c)
     g <- millCreatedAI (mT,s,c) pos del 
     return g
@@ -202,6 +204,7 @@ turnP1AI (m,s,c) = do
 nextTurnP1AI :: Game ->  IO Game
 nextTurnP1AI (m,s,c) = do 
     printMorris m
+    putStrLn ""
     putStrLn ("Phase 1 - Turn : " ++ show s)
     (m,s,c) <- turnP1AI (m,s,c)
     play (m,s+1,opponent c)
