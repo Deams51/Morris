@@ -9,7 +9,6 @@ import Utils
 import Control.Monad (when)
 import Control.Exception.Base (evaluate)
 import Data.Maybe (fromJust)
-import Data.Tree
 
 data Cell = PlayerA | PlayerB | Closed 
   deriving (Show, Eq)
@@ -37,19 +36,6 @@ blankMorris = Morris (
 
 newGame :: Game
 newGame = (blankMorris,0, PlayerA)
-
--- Example of phase 2 Morris to debug
-{-p2Morris = Morris ( 
-     fromList [
-      fromList [Just PlayerA, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Just PlayerA]
-    , fromList [Just Closed, Just PlayerA, Just Closed, Just PlayerA, Just Closed, Nothing, Just Closed]
-    , fromList [Just Closed, Just Closed, Just PlayerB, Just PlayerB, Nothing, Just Closed, Just Closed]
-    , fromList [Just PlayerB, Just PlayerA, Nothing, Just Closed, Just PlayerA, Just PlayerB, Just PlayerB]
-    , fromList [Just Closed, Just Closed, Just PlayerB, Just PlayerA, Nothing, Just Closed, Just Closed]
-    , fromList [Just Closed, Nothing, Just Closed, Just PlayerA, Just Closed, Just PlayerB, Just Closed]
-    , fromList [Just PlayerA, Just Closed, Just Closed, Just PlayerB, Just Closed, Just Closed, Just PlayerB]
-    ])
--}
 
 p2Morris = Morris ( 
      fromList [
@@ -83,10 +69,6 @@ horizontalMills = [[(y,x)|(x,y)<-mill] |mill<-verticalMills]
   
 possibleMills :: [[Pos]]
 possibleMills = verticalMills ++ horizontalMills
-
-
---blankMorris :: Morris
---blankMorris = Morris [[Nothing | x<-[0..6]] | x<-[0..6]]
 
 printMorris :: Morris -> IO ()
 printMorris s = putStr (unlines (map (map cellToChar) list))
@@ -201,16 +183,6 @@ nextTurnP1 (m,s,c) = do
     play (m,s+1,opponent c)
 
 --Phase 2 
--- CanMove old_pos new_pos
--- possibleMoves Pos
-{-
- instance Arbitrary Sudoku where
- arbitrary =
-   do rows <- sequence [ sequence [ cell | j <- [1..9] ] | i <- [1..9] ]
-      return (Sudoku rows)
-
-sequence :: Monad m => [m a] -> m [a]
--}
 
 -- Checks if a stone belongs to a player
 isPlayer :: Morris -> Pos -> Maybe Cell -> Bool
@@ -278,57 +250,22 @@ isDone (m,t,c) = numberStones m PlayerA <4
               || numberStones m PlayerB <4
 
 
----
- 
+--AI
+-- Int : Move that get us here
+-- Cell : Player who played the move
+type State = (Morris, Pos, Cell)
+type GameTree = [[State]]
 
---no nrecursive prototype, fix
-
---emulate :: Morris -> Maybe Cell -> Pos
---emulate m c  =  [(fst x
---                 ,[(rateMorris (movePiece m (fst x) z) (fromJust c), z) 
- --                 | z<-(snd x)]) 
-   --             | x<-(possibleMoves p2Morris (Just PlayerB))]
- -- where x    = [x | x<-(possibleMoves m c)]
-        
-
--- emulate' m c d =  [emulate' (movePiece m (fst x) (snd x)) c (d-1) | x<-possibleMoves m c]
--- emulate' m (Just c) 0 = [rateMorris m c]
-   
--- creates a game tree of maximum depth d   
---makeTree m c d = (Nothing, makeTree' m c d)
-
---makeTree' m c d = [ | x<-(possibleMoves m c)]
-
-makeTreeP1 :: (Morris,Maybe Cell) -> Int -> Tree A
-makeTreeP1 (m,Just p) d = unfoldTree evaluateMorrisP1 ([],Just (opponent p),d,0,m)  
-
-type A = ([Pos], Maybe Cell, Int, Int, Morris) -- Int == depth,rate
-type B = A -- (Maybe Cell, Morris)
-
--- Returns all the possible resulting Morris  
-evaluateMorrisP1 :: B -> (A,[B])
-evaluateMorrisP1 (pos,Just p,0,r,m) = ((pos,Just p,0,r,m),[])
-evaluateMorrisP1 (pos,Just p,d,r,m) = (
-                                        (pos,Just p,d,r,m),
-                                        [(pos ++ [x],Just (opponent p),d-1,(rateMorris (addPiece m x p) p),(addPiece m x p)) | x<-possiblePlaces m]
-                                      )
-
-chooseMoveP1 :: Morris -> Maybe Cell -> Pos
-chooseMoveP1 m p = head $ pos solution
-  where states = last (levels $ makeTreeP1 (m,p) 4) 
-        orderFunc (_,_,_,r,_) (_,_,_,r2,_) = compare r r2
-        solution = maximumBy orderFunc states
-        pos (a,b,c,d,e) = a
-
--- makeTree m c d = Node m [makeTree' m c d x y | (x,y)<-possibleMoves m c]
-
--- makeTree' m c d x y = Node m [makeTree' (movePiece m a b) c (d-1) a b | (a,b)<-possibleMoves m c]
+-- construct the GameTree on a given depth, ie for a number of turn
+constructTreeP1 :: GameTree -> Int -> GameTree
+constructTreeP1 _ (-1) = [[]]
+constructTreeP1 g n = g ++ constructTree ([[(addPiece m x p, x,p) |x<-possiblePlaces m] |(m,pos,p)<-last g]) (n-1)
 
 
 
 -- gives the current value of the Morris a rating 
 rateMorris :: Morris -> Cell -> Int
-rateMorris m c = f c - f (opponent c)
+rateMorris m c = f c - f (opponent c) 
   where list = concat [toList x | x<-toList(rows m)]
         f x  = length.filter (==(Just x)) $ list
 
@@ -357,19 +294,6 @@ possiblePlaces :: Morris -> [Pos]
 possiblePlaces m = map (\(x,y) -> x) $ filter (\(x,y) -> y == Nothing) 
                    $ zip [(x,y) | x<-[0..6], y<-[0..6]] 
                    $ concat [toList x | x<-toList(rows m)]
-
-
--- possiblePlaces ... place all
-  -- check if mil
-      -- remove enemy piece if mill
--- repeat for enemy
---phaseOneAI :: Morris ->
---phaseOneAI m c d = Node m [x | x<-ps]
---  where ps = possiblePlaces m
-
---evaluateMorris :: B -> (A,[B])
---evaluateMorris b = 
-
 
 -- Properties related func 
 cell :: Gen (Cell)
@@ -405,15 +329,3 @@ prop_removePiece m (x,y)  | (val == Just Closed) = mN == m
         y'  = abs $ mod y 7
         mN  = removePiece m (x',y')
         val = getValue m (x',y')
-
--- Need to check that the new morris have the piece at the right position
-  -- if the move is not valid then the morris remains the same
-{- prop_movePiece :: Morris -> Pos -> Pos -> Cell -> Bool
-prop_movePiece m (x,y) (xT,yT) c  | isValidMove m (x',y') (xT',yT') (Just c) = getValue m (x',y') == getValue m (xT',yT')
-                                  | otherwise = m == mN
-  where x'  = abs $ mod x 7
-        y'  = abs $ mod y 7
-        xT' = abs $ mod xT 7
-        yT' = abs $ mod yT 7
-        mN  = movePiece m (x',y') (xT',yT')
--}
