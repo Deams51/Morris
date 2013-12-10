@@ -39,7 +39,7 @@ newGame = (blankMorris,0, PlayerA)
 
 p2Morris = Morris ( 
      fromList [
-      fromList [Just PlayerA, Just Closed, Just Closed, Just PlayerA, Just Closed, Just Closed, Just PlayerA]
+      fromList [Just PlayerA, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Just PlayerA]
     , fromList [Just Closed, Just PlayerA, Just Closed, Nothing, Just Closed, Nothing, Just Closed]
     , fromList [Just Closed, Just Closed, Just PlayerB, Just PlayerB, Nothing, Just Closed, Just Closed]
     , fromList [Nothing, Just PlayerA, Nothing, Just Closed, Just PlayerA, Just PlayerB, Nothing]
@@ -180,6 +180,30 @@ nextTurnP1 (m,s,c) = do
     printMorris m
     putStrLn ("Phase 1 - Turn : " ++ show s)
     (m,s,c) <- turnP1 (m,s,c)
+    playAI (m,s+1,opponent c)
+
+millCreatedAI :: Game -> Pos -> Pos -> IO Game
+millCreatedAI (m,s,c) pos del = do
+    if(isInMill m pos)
+      then do
+        mT <- evaluate (removePiece m del)
+        return (mT,s,c)
+      else do
+        return (m,s,c)
+
+turnP1AI :: Game -> IO Game
+turnP1AI (m,s,c) = do
+    putStrLn ((show c) ++ " turn")
+    let (pos,del) = bestMoveP1 (constructTreeP1 [[(m,[],[],c)]] c 5) c 
+    mT <- evaluate (addPiece m pos c)
+    g <- millCreatedAI (mT,s,c) pos del 
+    return g
+
+nextTurnP1AI :: Game ->  IO Game
+nextTurnP1AI (m,s,c) = do 
+    printMorris m
+    putStrLn ("Phase 1 - Turn : " ++ show s)
+    (m,s,c) <- turnP1AI (m,s,c)
     play (m,s+1,opponent c)
 
 --Phase 2 
@@ -246,6 +270,11 @@ play g  | isPhase1 g  = nextTurnP1 g >>= play
         | isDone g    = return g
         | otherwise   = nextTurnP2 g >>= play
 
+playAI :: Game -> IO Game
+playAI g  | isPhase1 g  = nextTurnP1AI g >>= play
+          | isDone g    = return g
+          | otherwise   = nextTurnP2 g >>= play
+
 -- Check if a game is done
 isDone :: Game -> Bool
 isDone (m,t,c) = numberStones m PlayerA <4
@@ -254,20 +283,32 @@ isDone (m,t,c) = numberStones m PlayerA <4
 
 --AI
 -- Int : Move that get us here
+-- Int : Stone removed to get us here
 -- Cell : Player who played the move
-type State = (Morris, Pos, Cell)
-type GameTree = [[State]]
+type StateP1 = (Morris,[Pos],[Pos],Cell)
+type GameTree = [[StateP1]]
 
 -- construct the GameTree on a given depth, ie for a number of turn
-constructTreeP1 :: GameTree -> Int -> GameTree
-constructTreeP1 _ (-1) = [[]]
-constructTreeP1 g n = g ++ constructTreeP1 ([[(addPiece m x p, x,p) |x<-possiblePlaces m] |(m,pos,p)<-last g]) (n-1)
+constructTreeP1 :: GameTree -> Cell -> Int -> GameTree
+constructTreeP1 _ _ (-1) = [[]] 
+constructTreeP1 g p n = g ++ constructTreeP1 ([concat[addPieceAI (m,pos,del,lastPlayer) x p |x<-possiblePlaces m]|(m,pos,del,lastPlayer)<-last g]) (opponent p) (n-1)
 
+addPieceAI :: StateP1 -> Pos -> Cell -> [StateP1]
+addPieceAI (m,pos,del,c) x p  | isInMill newM x = [(removePiece newM delete,pos++[x],del++[delete],p)|delete<-canBeRemoved newM (opponent p)]
+                              | otherwise =  [(newM,pos++[x],del,p)]
+  where newM = addPiece m x p
 
+-- first pos is to place, snd is to delete
+bestMoveP1 :: GameTree -> Cell -> (Pos,Pos)
+bestMoveP1 g p  | null b = (head $ a,(-1,-1))
+                | otherwise = (head a, head b)                 
+  where list = last $ init g
+        order (x,x',y) (x2,x2',y2) = compare y y2
+        (a,b,c) = maximumBy order [(pos,del,rateMorris m c)|(m,pos,del,c)<-list]
 
 -- gives the current value of the Morris a rating 
 rateMorris :: Morris -> Cell -> Int
-rateMorris m c = f c - f (opponent c) 
+rateMorris m c = f c - f (opponent c) +9 * (countMils m c)
   where list = concat [toList x | x<-toList(rows m)]
         f x  = length.filter (==(Just x)) $ list
 
