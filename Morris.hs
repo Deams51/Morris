@@ -9,10 +9,6 @@ import Utils
 import Control.Monad (when)
 import Control.Exception.Base (evaluate)
 import Data.Maybe (fromJust)
-<<<<<<< HEAD
-=======
-import Data.Tree (Tree, unfoldTree, levels)
->>>>>>> abc89da4b3ccb4367b200d5116acdb6af3b6fb8a
 
 data Cell = PlayerA | PlayerB | Closed 
   deriving (Show, Eq)
@@ -265,7 +261,7 @@ type GameTree = [[State]]
 -- construct the GameTree on a given depth, ie for a number of turn
 constructTreeP1 :: GameTree -> Int -> GameTree
 constructTreeP1 _ (-1) = [[]]
-constructTreeP1 g n = g ++ constructTree ([[(addPiece m x p, x,p) |x<-possiblePlaces m] |(m,pos,p)<-last g]) (n-1)
+constructTreeP1 g n = g ++ constructTreeP1 ([[(addPiece m x p, x,p) |x<-possiblePlaces m] |(m,pos,p)<-last g]) (n-1)
 
 
 
@@ -297,11 +293,6 @@ cellMoves m p c = (p, filter (\x -> isValidMove m p x c) allCord)
 
 -- returns coordinates of all places on the table not occupied by a stone
 possiblePlaces :: Morris -> [Pos]        
-<<<<<<< HEAD
-possiblePlaces m = map (\(x,y) -> x) $ filter (\(x,y) -> y == Nothing) 
-                   $ zip [(x,y) | x<-[0..6], y<-[0..6]] 
-                   $ concat [toList x | x<-toList(rows m)]
-=======
 possiblePlaces m = map (\(x,y) -> x) 
                    $ filter (\(x,y) -> y == Nothing) (morrisCoords m)
 
@@ -329,8 +320,6 @@ myStonePos m c = map (\(x,y) -> x) $ filter (\(x,y) -> y == (Just c)) $ morrisCo
 
 --evaluateMorris :: B -> (A,[B])
 --evaluateMorris b = 
-
->>>>>>> abc89da4b3ccb4367b200d5116acdb6af3b6fb8a
 
 -- Properties related func 
 cell :: Gen (Cell)
