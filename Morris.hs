@@ -317,8 +317,15 @@ rateMorris m c = f c - f (opponent c)
 
 -- returns all possible moves of a player
 possibleMoves :: Morris -> Maybe Cell -> [(Pos,[Pos])]
-possibleMoves m c = [cellMoves m x c | x <-myCells]
-  where myCells = filter (\x -> isPlayer m x c) (nub $ concat possibleMills)
+possibleMoves m c = [cellMoves m x c | x <-myCells m c]
+
+myCells :: Morris -> Maybe Cell -> [Pos]
+myCells m c = filter (\x -> isPlayer m x c) (nub $ concat possibleMills)
+
+-- returns a list of all the player stones that can be removed if we just created a mill
+canBeRemoved :: Morris -> Cell -> [Pos]
+canBeRemoved m p  | allMill m p = myCells m (Just p)
+                  | otherwise = [x | x<-myCells m (Just p), not $ isInMill m x]
 
 -- not returning a correct result, blame isValidMove
 -- cellMoves p2Morris (1,1) (Just PlayerA)
