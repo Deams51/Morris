@@ -1,7 +1,7 @@
 module Morris where
  
 import Test.QuickCheck
-import Data.List (filter, nub)
+import Data.List (filter, nub, maximumBy)
 import Data.Maybe (isNothing)
 import Data.Sequence (Seq, fromList, index, update)
 import Data.Foldable (toList)
@@ -10,7 +10,6 @@ import Control.Monad (when)
 import Control.Exception.Base (evaluate)
 import Data.Maybe (fromJust)
 import Data.Tree
-
 
 data Cell = PlayerA | PlayerB | Closed 
   deriving (Show, Eq)
@@ -300,27 +299,32 @@ isDone (m,t,c) = numberStones m PlayerA <4
 
 --makeTree' m c d = [ | x<-(possibleMoves m c)]
 
+makeTreeP1 :: (Morris,Maybe Cell) -> Int -> Tree A
+makeTreeP1 (m,Just p) d = unfoldTree evaluateMorrisP1 ([],Just (opponent p),d,0,m)  
 
-makeTree :: (Morris,Maybe Cell) -> Int -> Tree A
-makeTree (m,Just p) d = unfoldTree evaluateMorris ((9,9),Just p,d,0,m)  
-
-<<<<<<< HEAD
-type A = (Pos, Maybe Cell, Int, Int, Morris) -- Int == rate
+type A = ([Pos], Maybe Cell, Int, Int, Morris) -- Int == depth,rate
 type B = A -- (Maybe Cell, Morris)
-=======
->>>>>>> 28af2f24143cb9da09aa6b6319f1b51c3d438869
 
 -- Returns all the possible resulting Morris  
-evaluateMorris :: B -> (A,[B])
-evaluateMorris (pos,Just p,0,r,m) = ((pos,Just p,0,r,m),[])
-evaluateMorris (pos,Just p,d,r,m) = (
-                                    (pos,Just p,d,r,m),
-                                    [(x,Just (opponent p),d-1,(rateMorris (addPiece m x p) p),(addPiece m x p)) | x<-possiblePlaces m]
-                                  )
+evaluateMorrisP1 :: B -> (A,[B])
+evaluateMorrisP1 (pos,Just p,0,r,m) = ((pos,Just p,0,r,m),[])
+evaluateMorrisP1 (pos,Just p,d,r,m) = (
+                                        (pos,Just p,d,r,m),
+                                        [(pos ++ [x],Just (opponent p),d-1,(rateMorris (addPiece m x p) p),(addPiece m x p)) | x<-possiblePlaces m]
+                                      )
+
+chooseMoveP1 :: Morris -> Maybe Cell -> Pos
+chooseMoveP1 m p = head $ pos solution
+  where states = last (levels $ makeTreeP1 (m,p) 4) 
+        orderFunc (_,_,_,r,_) (_,_,_,r2,_) = compare r r2
+        solution = maximumBy orderFunc states
+        pos (a,b,c,d,e) = a
 
 -- makeTree m c d = Node m [makeTree' m c d x y | (x,y)<-possibleMoves m c]
 
 -- makeTree' m c d x y = Node m [makeTree' (movePiece m a b) c (d-1) a b | (a,b)<-possibleMoves m c]
+
+
 
 -- gives the current value of the Morris a rating 
 rateMorris :: Morris -> Cell -> Int
