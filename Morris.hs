@@ -9,6 +9,7 @@ import Utils
 import Control.Monad (when)
 import Control.Exception.Base (evaluate)
 import Data.Maybe (fromJust)
+import Data.Tree
 
 
 data Cell = PlayerA | PlayerB | Closed 
@@ -134,7 +135,7 @@ isInMill m (x,y)  = or[and[getValue m pos == current |pos<-mill] | mill<-listMil
 -- Check if all the stones from a player are in a mill
 allMill :: Morris -> Cell -> Bool
 allMill m p = and[isInMill m x | x<-playerPos]
-  where allPos = [(x,y) | x<-[1..7], y<-[1..7]]
+  where allPos = [(x,y) | x<-[0..6], y<-[0..6]]
         playerPos = Data.List.filter (isUsed m p) allPos
 
 -- Add a piece to the board at newPos
@@ -300,10 +301,19 @@ isDone (m,t,c) = numberStones m PlayerA <4
 --makeTree' m c d = [ | x<-(possibleMoves m c)]
 
 
+makeTree :: (Morris,Maybe Cell) -> Int -> Tree A
+makeTree (m,Just p) d = unfoldTree evaluateMorris ((9,9),Just p,d,0,m)  
 
-data Tree a = EmptyTree | Node a [Tree a]
-  deriving (Show, Read, Eq)  
+type A = (Pos, Maybe Cell, Int, Int, Morris) -- Int == rate
+type B = A -- (Maybe Cell, Morris)
 
+-- Returns all the possible resulting Morris  
+evaluateMorris :: B -> (A,[B])
+evaluateMorris (pos,Just p,0,r,m) = ((pos,Just p,0,r,m),[])
+evaluateMorris (pos,Just p,d,r,m) = (
+                                    (pos,Just p,d,r,m),
+                                    [(x,Just (opponent p),d-1,(rateMorris (addPiece m x p) p),(addPiece m x p)) | x<-possiblePlaces m]
+                                  )
 
 -- makeTree m c d = Node m [makeTree' m c d x y | (x,y)<-possibleMoves m c]
 
