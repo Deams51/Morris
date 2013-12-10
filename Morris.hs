@@ -327,7 +327,13 @@ possibleMoves m c = [cellMoves m x c | x <-myCells]
 cellMoves :: Morris -> Pos -> Maybe Cell -> (Pos,[Pos])
 cellMoves m p c = (p, filter (\x -> isValidMove m p x c) allCord)
   where allCord = [(x,y) | x<-[0..6], y<-[0..6]]
-        
+
+-- returns coordinates of all places on the table not occupied by a stone
+possiblePlaces :: Morris -> [Pos]        
+possiblePlaces m = map (\(x,y) -> x) $ filter (\(x,y) -> y == Nothing) 
+                   $ zip [(x,y) | x<-[0..7], y<-[0..7]] 
+                   $ concat [toList x | x<-toList(rows m)]
+
 
 -- Properties related func 
 cell :: Gen (Cell)
