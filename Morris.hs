@@ -1,11 +1,7 @@
 module Morris where
  
 import Test.QuickCheck
-<<<<<<< HEAD
 import Data.List (filter, nub, maximumBy, intersect)
-=======
-import Data.List (filter, nub, maximumBy)
->>>>>>> 8606c1d11379d30edf96ef9f10723dada252f471
 import Data.Maybe (isNothing)
 import Data.Sequence (Seq, fromList, index, update)
 import Data.Foldable (toList)
@@ -13,11 +9,7 @@ import Utils
 import Control.Monad (when)
 import Control.Exception.Base (evaluate)
 import Data.Maybe (fromJust)
-<<<<<<< HEAD
 import Data.Tree (Tree, unfoldTree, levels)
-=======
-import Data.Tree
->>>>>>> 8606c1d11379d30edf96ef9f10723dada252f471
 
 data Cell = PlayerA | PlayerB | Closed 
   deriving (Show, Eq)
