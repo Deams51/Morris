@@ -217,9 +217,17 @@ isPlayer m pos p = getValue m pos == p
   -- For a move to be valid from posF, posT must be in a possible mill with PosF 
 isValidMove :: Morris -> Pos -> Pos -> Maybe Cell -> Bool
 isValidMove m posF posT p = (isValidPos m posT)
-                          && isPlayer m posF p
-                          && or[elem posF mills && elem posT mills | mills<-possibleMills]
+                          && isPlayer m posF p 
                           && not (isNothing p)
+                          && isAdjacent posF posT
+
+isAdjacent :: Pos -> Pos -> Bool
+isAdjacent (x,y) (xT,yT) = or[elem (x,y) mills && elem (xT,yT) mills | mills<-possibleMills]
+                          && and[all (>=distFT) (map (distanceSquare (x,y)) (filter (/=(x,y)) mills))| mills<-possibleMills, elem (x,y) mills, elem (xT,yT) mills]
+  where distFT = distanceSquare (x,y) (xT,yT)
+
+distanceSquare :: Pos -> Pos -> Int
+distanceSquare (x,y) (x2,y2) = (x-x2)*(x-x2) + (y-y2)*(y-y2)
 
 numberStones :: Morris -> Cell -> Int
 numberStones m c = (length $ filter (== Just c) l )
