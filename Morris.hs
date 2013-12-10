@@ -1,7 +1,7 @@
 module Morris where
  
 import Test.QuickCheck
-import Data.List (filter, nub, maximumBy)
+import Data.List (filter, nub, maximumBy, intersect)
 import Data.Maybe (isNothing)
 import Data.Sequence (Seq, fromList, index, update)
 import Data.Foldable (toList)
@@ -9,6 +9,10 @@ import Utils
 import Control.Monad (when)
 import Control.Exception.Base (evaluate)
 import Data.Maybe (fromJust)
+<<<<<<< HEAD
+=======
+import Data.Tree (Tree, unfoldTree, levels)
+>>>>>>> abc89da4b3ccb4367b200d5116acdb6af3b6fb8a
 
 data Cell = PlayerA | PlayerB | Closed 
   deriving (Show, Eq)
@@ -39,8 +43,8 @@ newGame = (blankMorris,0, PlayerA)
 
 p2Morris = Morris ( 
      fromList [
-      fromList [Just PlayerA, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Just PlayerA]
-    , fromList [Just Closed, Just PlayerA, Just Closed, Just PlayerA, Just Closed, Nothing, Just Closed]
+      fromList [Just PlayerA, Just Closed, Just Closed, Just PlayerA, Just Closed, Just Closed, Just PlayerA]
+    , fromList [Just Closed, Just PlayerA, Just Closed, Nothing, Just Closed, Nothing, Just Closed]
     , fromList [Just Closed, Just Closed, Just PlayerB, Just PlayerB, Nothing, Just Closed, Just Closed]
     , fromList [Nothing, Just PlayerA, Nothing, Just Closed, Just PlayerA, Just PlayerB, Nothing]
     , fromList [Just Closed, Just Closed, Just PlayerB, Just PlayerA, Nothing, Just Closed, Just Closed]
@@ -211,11 +215,13 @@ numberStones m c = (length $ filter (== Just c) l )
 turnP2 :: Game -> IO Game
 turnP2 (m,s,c) = do
     printMorris m
-    putStrLn ((show c) ++ " turn")
+    putStrLn ((show c) ++ " turn") 
+    putStrLn $ show [ (x1,x) | ((x,x1),y)<-possibleMoves m (Just c)]
     x<- promptIntFromRange "Stone x" (0,6)
     y<- promptIntFromRange "Stone y" (0,6)
     if (isPlayer m (x,y) (Just c))
       then do
+        putStrLn $ show $ [(x2,x1) | (x1,x2)<-filter (\(a,b) -> a == (x,y)) $ possibleMoves m (Just c)]
         xT<- promptIntFromRange "To x" (0,6)
         yT<- promptIntFromRange "To y" (0,6)
         if (isValidMove m (x,y) (xT,yT) (Just c))
@@ -291,9 +297,40 @@ cellMoves m p c = (p, filter (\x -> isValidMove m p x c) allCord)
 
 -- returns coordinates of all places on the table not occupied by a stone
 possiblePlaces :: Morris -> [Pos]        
+<<<<<<< HEAD
 possiblePlaces m = map (\(x,y) -> x) $ filter (\(x,y) -> y == Nothing) 
                    $ zip [(x,y) | x<-[0..6], y<-[0..6]] 
                    $ concat [toList x | x<-toList(rows m)]
+=======
+possiblePlaces m = map (\(x,y) -> x) 
+                   $ filter (\(x,y) -> y == Nothing) (morrisCoords m)
+
+-- returns a morris as a flat list with coordintes
+morrisCoords :: Morris -> [(Pos, Maybe Cell)]
+morrisCoords m = zip [(x,y) | x<-[0..6], y<-[0..6]] 
+                $ concat [toList x | x<-toList(rows m)] 
+
+-- counts the mils of a player
+countMils :: Morris -> Cell -> Int
+countMils m c = length $ filter (>2) 
+                [length $ intersect x (myStonePos m c) | x<-possibleMills]
+
+-- Returns the position of all stones owned by player
+myStonePos :: Morris -> Cell -> [Pos]
+myStonePos m c = map (\(x,y) -> x) $ filter (\(x,y) -> y == (Just c)) $ morrisCoords m
+
+-- possiblePlaces ... place all
+  -- check if mil
+      -- remove enemy piece if mill
+-- repeat for enemy
+--phaseOneAI :: Morris ->
+--phaseOneAI m c d = Node m [x | x<-ps]
+--  where ps = possiblePlaces m
+
+--evaluateMorris :: B -> (A,[B])
+--evaluateMorris b = 
+
+>>>>>>> abc89da4b3ccb4367b200d5116acdb6af3b6fb8a
 
 -- Properties related func 
 cell :: Gen (Cell)
