@@ -9,13 +9,14 @@ import Utils
 import Control.Monad (when)
 import Control.Exception.Base (evaluate)
 import Data.Maybe (fromJust)
+import Data.Tree
 
 
 data Cell = PlayerA | PlayerB | Closed 
   deriving (Show, Eq)
 
 type Pos = (Int,Int)
-type Move = (Pos,Pos)
+type Move = (Pos,Pos) 
 
 
 data Morris = Morris {rows :: Seq( Seq(Maybe Cell)) }
@@ -301,8 +302,6 @@ isDone (m,t,c) = numberStones m PlayerA <4
 
 
 
-data Tree a = EmptyTree | Node a [Tree a]
-  deriving (Show, Read, Eq)  
 
 
 -- makeTree m c d = Node m [makeTree' m c d x y | (x,y)<-possibleMoves m c]
@@ -338,8 +337,20 @@ cellMoves m p c = (p, filter (\x -> isValidMove m p x c) allCord)
 -- returns coordinates of all places on the table not occupied by a stone
 possiblePlaces :: Morris -> [Pos]        
 possiblePlaces m = map (\(x,y) -> x) $ filter (\(x,y) -> y == Nothing) 
-                   $ zip [(x,y) | x<-[0..7], y<-[0..7]] 
+                   $ zip [(x,y) | x<-[0..6], y<-[0..6]] 
                    $ concat [toList x | x<-toList(rows m)]
+
+
+-- possiblePlaces ... place all
+  -- check if mil
+      -- remove enemy piece if mill
+-- repeat for enemy
+--phaseOneAI :: Morris ->
+--phaseOneAI m c d = Node m [x | x<-ps]
+--  where ps = possiblePlaces m
+
+--evaluateMorris :: B -> (A,[B])
+--evaluateMorris b = 
 
 
 -- Properties related func 
