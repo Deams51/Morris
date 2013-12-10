@@ -15,11 +15,14 @@ data Cell = PlayerA | PlayerB | Closed
   deriving (Show, Eq)
 
 type Pos = (Int,Int)
+type Move = (Pos,Pos)
+
 
 data Morris = Morris {rows :: Seq( Seq(Maybe Cell)) }
   deriving ( Show, Eq )
 
 type Game = (Morris, Int, Cell)
+
 
 blankMorris = Morris ( 
      fromList [
@@ -276,17 +279,35 @@ isDone (m,t,c) = numberStones m PlayerA <4
 
 
 ---
-
+ 
 
 --no nrecursive prototype, fix
 
 --emulate :: Morris -> Maybe Cell -> Pos
-emulate m c  =  [(fst x
-                 ,[(rateMorris (movePiece m (fst x) z) (fromJust c), z) 
-                  | z<-(snd x)]) 
-                | x<-(possibleMoves p2Morris (Just PlayerB))]
-  where x    = [x | x<-(possibleMoves m c)]
+--emulate m c  =  [(fst x
+--                 ,[(rateMorris (movePiece m (fst x) z) (fromJust c), z) 
+ --                 | z<-(snd x)]) 
+   --             | x<-(possibleMoves p2Morris (Just PlayerB))]
+ -- where x    = [x | x<-(possibleMoves m c)]
         
+
+-- emulate' m c d =  [emulate' (movePiece m (fst x) (snd x)) c (d-1) | x<-possibleMoves m c]
+-- emulate' m (Just c) 0 = [rateMorris m c]
+   
+-- creates a game tree of maximum depth d   
+--makeTree m c d = (Nothing, makeTree' m c d)
+
+--makeTree' m c d = [ | x<-(possibleMoves m c)]
+
+
+
+data Tree a = EmptyTree | Node a [Tree a]
+  deriving (Show, Read, Eq)  
+
+
+-- makeTree m c d = Node m [makeTree' m c d x y | (x,y)<-possibleMoves m c]
+
+-- makeTree' m c d x y = Node m [makeTree' (movePiece m a b) c (d-1) a b | (a,b)<-possibleMoves m c]
 
 -- gives the current value of the Morris a rating 
 rateMorris :: Morris -> Cell -> Int
@@ -295,7 +316,7 @@ rateMorris m c = f c - f (opponent c)
         f x  = length.filter (==(Just x)) $ list
 
 -- returns all possible moves of a player
-possibleMoves :: Morris -> Maybe Cell -> [(Pos, [Pos])]
+possibleMoves :: Morris -> Maybe Cell -> [(Pos,[Pos])]
 possibleMoves m c = [cellMoves m x c | x <-myCells]
   where myCells = filter (\x -> isPlayer m x c) (nub $ concat possibleMills)
 
@@ -303,7 +324,7 @@ possibleMoves m c = [cellMoves m x c | x <-myCells]
 -- cellMoves p2Morris (1,1) (Just PlayerA)
 
 -- returns the possible moves of a cell
-cellMoves :: Morris -> Pos -> Maybe Cell -> (Pos, [Pos])
+cellMoves :: Morris -> Pos -> Maybe Cell -> (Pos,[Pos])
 cellMoves m p c = (p, filter (\x -> isValidMove m p x c) allCord)
   where allCord = [(x,y) | x<-[0..6], y<-[0..6]]
         
