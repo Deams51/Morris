@@ -1,11 +1,7 @@
 module Morris where
  
 import Test.QuickCheck
-<<<<<<< HEAD
-import Data.List (filter, nub, intersect)
-=======
-import Data.List (filter, nub, maximumBy)
->>>>>>> 8606c1d11379d30edf96ef9f10723dada252f471
+import Data.List (filter, nub, maximumBy, intersect)
 import Data.Maybe (isNothing)
 import Data.Sequence (Seq, fromList, index, update)
 import Data.Foldable (toList)
@@ -13,7 +9,7 @@ import Utils
 import Control.Monad (when)
 import Control.Exception.Base (evaluate)
 import Data.Maybe (fromJust)
-import Data.Tree (Tree, unfoldTree)
+import Data.Tree (Tree, unfoldTree, levels)
 
 data Cell = PlayerA | PlayerB | Closed 
   deriving (Show, Eq)
@@ -308,18 +304,8 @@ isDone (m,t,c) = numberStones m PlayerA <4
 makeTreeP1 :: (Morris,Maybe Cell) -> Int -> Tree A
 makeTreeP1 (m,Just p) d = unfoldTree evaluateMorrisP1 ([],Just (opponent p),d,0,m)  
 
-<<<<<<< HEAD
-makeTree :: (Morris,Maybe Cell) -> Int -> Tree A
-makeTree (m,Just p) d = unfoldTree evaluateMorris ((9,9),Just p,d,0,m)  
-
-
-type A = (Pos, Maybe Cell, Int, Int, Morris) -- Int == rate
-type B = A -- (Maybe Cell, Morris)
-
-=======
 type A = ([Pos], Maybe Cell, Int, Int, Morris) -- Int == depth,rate
 type B = A -- (Maybe Cell, Morris)
->>>>>>> 8606c1d11379d30edf96ef9f10723dada252f471
 
 -- Returns all the possible resulting Morris  
 evaluateMorrisP1 :: B -> (A,[B])
