@@ -34,6 +34,17 @@ blankMorris = Morris (
     , fromList [Nothing, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Nothing]
     ])
 
+debugMorris = Morris ( 
+     fromList [
+      fromList [Nothing, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Nothing]
+    , fromList [Just Closed, Just PlayerA, Just Closed, Just PlayerA, Just Closed, Nothing, Just Closed]
+    , fromList [Just Closed, Just Closed, Nothing, Nothing, Nothing, Just Closed, Just Closed]
+    , fromList [Just PlayerA, Nothing, Nothing, Just Closed, Nothing, Nothing, Nothing]
+    , fromList [Just Closed, Just Closed, Nothing, Nothing, Nothing, Just Closed, Just Closed]
+    , fromList [Just Closed, Nothing, Just Closed, Nothing, Just Closed, Nothing, Just Closed]
+    , fromList [Nothing, Just Closed, Just Closed, Just PlayerB, Just Closed, Just Closed, Just PlayerB]
+    ])
+
 newGame :: Game
 newGame = (blankMorris,0, PlayerA)
 
@@ -195,7 +206,7 @@ millCreatedAI (m,s,c) pos del = do
 turnP1AI :: Game -> IO Game
 turnP1AI (m,s,c) = do
     putStrLn ((show c) ++ " turn")
-    let ((x,y),(x2,y2)) = bestMoveP1 (constructTreeP1 [[(m,[],[],c)]] c 5) c 
+    let ((x,y),(x2,y2)) = bestMoveP1 (constructTreeP1 [[(m,[],[],c)]] c 10) c 
     putStrLn ("AI choose : " ++ show (y,x))
     mT <- evaluate (addPiece m (y,x) c)
     g <- millCreatedAI (mT,s,c) (y,x) (y2,x2) 
