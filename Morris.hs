@@ -195,10 +195,10 @@ millCreatedAI (m,s,c) pos del = do
 turnP1AI :: Game -> IO Game
 turnP1AI (m,s,c) = do
     putStrLn ((show c) ++ " turn")
-    let (pos,del) = bestMoveP1 (constructTreeP1 [[(m,[],[],c)]] c 5) c 
-    putStrLn ("AI choose : " ++ show pos)
-    mT <- evaluate (addPiece m pos c)
-    g <- millCreatedAI (mT,s,c) pos del 
+    let ((x,y),(x2,y2)) = bestMoveP1 (constructTreeP1 [[(m,[],[],c)]] c 5) c 
+    putStrLn ("AI choose : " ++ show (y,x))
+    mT <- evaluate (addPiece m (y,x) c)
+    g <- millCreatedAI (mT,s,c) (y,x) (y2,x2) 
     return g
 
 nextTurnP1AI :: Game ->  IO Game
