@@ -5,23 +5,21 @@ import Data.List (filter, nub, maximumBy, intersect)
 import Data.Maybe (isNothing)
 import Data.Sequence (Seq, fromList, index, update)
 import Data.Foldable (toList)
-import Utils
 import Control.Monad (when)
 import Control.Exception.Base (evaluate)
 import Data.Maybe (fromJust)
+import Utils
+import Templates
+
+data Morris = Morris {rows :: Seq( Seq(Maybe Cell)) }
+  deriving ( Show, Eq )
 
 data Cell = PlayerA | PlayerB | Closed 
   deriving (Show, Eq)
 
 type Pos = (Int,Int)
 type Move = (Pos,Pos) 
-
-
-data Morris = Morris {rows :: Seq( Seq(Maybe Cell)) }
-  deriving ( Show, Eq )
-
 type Game = (Morris, Int, Cell)
-
 
 blankMorris = Morris ( 
      fromList [
@@ -32,6 +30,17 @@ blankMorris = Morris (
     , fromList [Just Closed, Just Closed, Nothing, Nothing, Nothing, Just Closed, Just Closed]
     , fromList [Just Closed, Nothing, Just Closed, Nothing, Just Closed, Nothing, Just Closed]
     , fromList [Nothing, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Nothing]
+    ])
+
+allMillMorris = Morris ( 
+     fromList [
+      fromList [Just PlayerA, Just Closed, Just Closed, Just PlayerA, Just Closed, Just Closed, Just PlayerA]
+    , fromList [Just Closed, Nothing, Just Closed, Nothing, Just Closed, Nothing, Just Closed]
+    , fromList [Just Closed, Just Closed, Nothing, Nothing, Nothing, Just Closed, Just Closed]
+    , fromList [Nothing, Nothing, Nothing, Just Closed, Nothing, Nothing, Nothing]
+    , fromList [Just Closed, Just Closed, Nothing, Just PlayerA, Nothing, Just Closed, Just Closed]
+    , fromList [Just Closed, Nothing, Just Closed, Just PlayerA, Just Closed, Nothing, Just Closed]
+    , fromList [Nothing, Just Closed, Just Closed, Just PlayerA, Just Closed, Just Closed, Nothing]
     ])
 
 debugMorris = Morris ( 
@@ -45,9 +54,6 @@ debugMorris = Morris (
     , fromList [Nothing, Just Closed, Just Closed, Just PlayerB, Just Closed, Just Closed, Just PlayerB]
     ])
 
-newGame :: Game
-newGame = (blankMorris,0, PlayerA)
-
 p2Morris = Morris ( 
      fromList [
       fromList [Just PlayerA, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Just PlayerA]
@@ -58,9 +64,6 @@ p2Morris = Morris (
     , fromList [Just Closed, Nothing, Just Closed, Just PlayerA, Just Closed, Nothing, Just Closed]
     , fromList [Just PlayerA, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Nothing]
     ])
-
-p2Game :: Game
-p2Game = (p2Morris,18, PlayerA)
 
 verticalMills :: [[Pos]]
 verticalMills = 
@@ -75,14 +78,16 @@ verticalMills =
     [(6,0),(6,3),(6,6)]
   ]
 
+
 horizontalMills :: [[Pos]]
 horizontalMills = [[(y,x)|(x,y)<-mill] |mill<-verticalMills]
   
 possibleMills :: [[Pos]]
 possibleMills = verticalMills ++ horizontalMills
 
+-- prints a morris
 printMorris :: Morris -> IO ()
-printMorris s = putStr (unlines (map (map cellToChar) list))
+printMorris s = putStr $ (unlines (map (map cellToChar) list))
   where list = [toList x | x<-toList(rows s)]
 
 -- Translates Cell into printable values
@@ -92,9 +97,17 @@ cellToChar (Just PlayerB) = 'B'
 cellToChar (Just Closed)  = '.' 
 cellToChar Nothing        = 'O'
 
+-- Returns the opposite player of the input
 opponent :: Cell -> Cell
 opponent c | c == PlayerA = PlayerB
            | c == PlayerB = PlayerA
+
+newGame :: Game
+newGame = (blankMorris,0, PlayerA)
+
+p2Game :: Game
+p2Game = (p2Morris,18, PlayerA)
+
 -- Phase 1
 
 -- Return value of (x,y) Cell in morris
@@ -107,9 +120,10 @@ isValidPos :: Morris -> Pos -> Bool
 isValidPos m (x,y) = isNothing(value) && value /= (Just Closed)
   where value = getValue m (x,y)
 
+-- Checks if a stone in this position can be removed
 isRemovable :: Morris -> Pos -> Cell -> Bool
 isRemovable m pos c = and[val /= x | x<-[Nothing, Just Closed, Just c]]
-                        && ((not $ isInMill m pos ) || (allMill m $ opponent c))
+                      && ((not $ isInMill m pos ) || (allMill m $ opponent c))
     where val = getValue m pos
 
 -- Checks if a position contains a piece from a player
@@ -117,18 +131,19 @@ isUsed :: Morris -> Cell -> Pos -> Bool
 isUsed m pl (x,y) = value == Just pl
   where value = getValue m (x,y)
 
--- Check if a stone is in a mill
-  --in a mill if pos a stone and if in list of mills and a mill
+-- Check if a Position contains a mill
 isInMill :: Morris -> Pos -> Bool 
-isInMill m (x,y)  = or[and[getValue m pos == current |pos<-mill] | mill<-listMills]
-    where listMills = Data.List.filter (elem (x,y)) possibleMills
+isInMill m (x,y)  = or[and  
+                        [getValue m pos == current | pos<-mill]
+                      | mill<-listMills]
+    where listMills = filter (elem (x,y)) possibleMills
           current = getValue m (x,y)
 
 -- Check if all the stones from a player are in a mill
 allMill :: Morris -> Cell -> Bool
 allMill m p = and[isInMill m x | x<-playerPos]
   where allPos = [(x,y) | x<-[0..6], y<-[0..6]]
-        playerPos = Data.List.filter (isUsed m p) allPos
+        playerPos = filter (isUsed m p) allPos
 
 -- Add a piece to the board at newPos
 addPiece :: Morris -> Pos -> Cell -> Morris
@@ -147,6 +162,7 @@ removePiece m (x,y) |  val == Just Closed  || isNothing val = m
                     | otherwise = Morris(update y new (rows m))
   where new = update x Nothing (index (rows m) y) 
         val = getValue m (x,y)
+
 -- Check if still in Phase 1
 isPhase1 :: Game -> Bool
 isPhase1 (m,t,c) = t<18
@@ -206,7 +222,7 @@ millCreatedAI (m,s,c) pos del = do
 turnP1AI :: Game -> IO Game
 turnP1AI (m,s,c) = do
     putStrLn ((show c) ++ " turn")
-    let ((x,y),(x2,y2)) = bestMoveP1 (constructTreeP1 [[(m,[],[],c)]] c 10) c 
+    let ((x,y),(x2,y2)) = bestMoveP1 (constructTreeP1 [[(m,[],[],c)]] c 1) c 
     putStrLn ("AI choose : " ++ show (y,x))
     mT <- evaluate (addPiece m (y,x) c)
     g <- millCreatedAI (mT,s,c) (y,x) (y2,x2) 
@@ -235,8 +251,11 @@ isValidMove m posF posT p = (isValidPos m posT)
                           && isAdjacent posF posT
 
 isAdjacent :: Pos -> Pos -> Bool
-isAdjacent (x,y) (xT,yT) = or[elem (x,y) mills && elem (xT,yT) mills | mills<-possibleMills]
-                          && and[all (>=distFT) (map (distanceSquare (x,y)) (filter (/=(x,y)) mills))| mills<-possibleMills, elem (x,y) mills, elem (xT,yT) mills]
+isAdjacent (x,y) (xT,yT) = 
+        or[elem (x,y) mills && elem (xT,yT) mills | mills<-possibleMills]
+        && 
+        and[all (>=distFT) (map (distanceSquare (x,y)) (filter (/=(x,y)) mills))
+           | mills<-possibleMills, elem (x,y) mills, elem (xT,yT) mills]
   where distFT = distanceSquare (x,y) (xT,yT)
 
 distanceSquare :: Pos -> Pos -> Int
@@ -305,10 +324,12 @@ type GameTree = [[StateP1]]
 -- construct the GameTree on a given depth, ie for a number of turn
 constructTreeP1 :: GameTree -> Cell -> Int -> GameTree
 constructTreeP1 _ _ (-1) = [[]] 
-constructTreeP1 g p n = g ++ constructTreeP1 ([concat[addPieceAI (m,pos,del,lastPlayer) x p |x<-possiblePlaces m]|(m,pos,del,lastPlayer)<-last g]) (opponent p) (n-1)
+constructTreeP1 g p n = g ++ constructTreeP1 ([concat[addPieceAI (m,pos,del,lastPlayer) x p 
+                                              |x<-possiblePlaces m]|(m,pos,del,lastPlayer)<-last g]) (opponent p) (n-1)
 
 addPieceAI :: StateP1 -> Pos -> Cell -> [StateP1]
-addPieceAI (m,pos,del,c) x p  | isInMill newM x = [(removePiece newM delete,pos++[x],del++[delete],p)|delete<-canBeRemoved newM (opponent p)]
+addPieceAI (m,pos,del,c) x p  | isInMill newM x = [(removePiece newM delete,pos++[x],del++[delete],p)
+                                                  |delete<-canBeRemoved newM (opponent p)]
                               | otherwise =  [(newM,pos++[x],del,p)]
   where newM = addPiece m x p
 
@@ -322,7 +343,8 @@ bestMoveP1 g p  | null b = (head $ a,(-1,-1))
 
 -- gives the current value of the Morris a rating 
 rateMorris :: Morris -> Cell -> Int
-rateMorris m c = f c - f (opponent c) +9 * (countMils m c)
+rateMorris m c = countMils m c
+-- f c - f (opponent c) +9 * (countMils m c)
   where list = concat [toList x | x<-toList(rows m)]
         f x  = length.filter (==(Just x)) $ list
 
@@ -337,9 +359,6 @@ myCells m c = filter (\x -> isPlayer m x c) (nub $ concat possibleMills)
 canBeRemoved :: Morris -> Cell -> [Pos]
 canBeRemoved m p  | allMill m p = myCells m (Just p)
                   | otherwise = [x | x<-myCells m (Just p), not $ isInMill m x]
-
--- not returning a correct result, blame isValidMove
--- cellMoves p2Morris (1,1) (Just PlayerA)
 
 -- returns the possible moves of a cell
 cellMoves :: Morris -> Pos -> Maybe Cell -> (Pos,[Pos])
@@ -365,16 +384,6 @@ countMils m c = length $ filter (>2)
 myStonePos :: Morris -> Cell -> [Pos]
 myStonePos m c = map (\(x,y) -> x) $ filter (\(x,y) -> y == (Just c)) $ morrisCoords m
 
--- possiblePlaces ... place all
-  -- check if mil
-      -- remove enemy piece if mill
--- repeat for enemy
---phaseOneAI :: Morris ->
---phaseOneAI m c d = Node m [x | x<-ps]
---  where ps = possiblePlaces m
-
---evaluateMorris :: B -> (A,[B])
---evaluateMorris b = 
 
 -- Properties related func 
 cell :: Gen (Cell)
