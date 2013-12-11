@@ -1,7 +1,7 @@
 module Morris where
  
 import Test.QuickCheck
-import Data.List (filter, nub, maximumBy, intersect)
+import Data.List (filter, nub, maximumBy, minimumBy, intersect)
 import Data.Maybe (isNothing)
 import Data.Sequence (Seq, fromList, index, update)
 import Data.Foldable (toList)
@@ -18,7 +18,10 @@ type Move = (Pos,Pos)
 
 
 data Morris = Morris {rows :: Seq( Seq(Maybe Cell)) }
-  deriving ( Show, Eq )
+  deriving ( Eq )
+
+instance Show Morris where
+  show (Morris a) = printMorrisString (Morris a)
 
 type Game = (Morris, Int, Cell)
 
@@ -36,13 +39,13 @@ blankMorris = Morris (
 
 debugMorris = Morris ( 
      fromList [
-      fromList [Nothing, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Nothing]
-    , fromList [Just Closed, Just PlayerA, Just Closed, Just PlayerA, Just Closed, Nothing, Just Closed]
+      fromList [Just PlayerA, Just Closed, Just Closed, Just PlayerA, Just Closed, Just Closed, Nothing]
+    , fromList [Just Closed, Just PlayerA, Just Closed, Nothing, Just Closed, Nothing, Just Closed]
     , fromList [Just Closed, Just Closed, Nothing, Nothing, Nothing, Just Closed, Just Closed]
     , fromList [Just PlayerA, Nothing, Nothing, Just Closed, Nothing, Nothing, Nothing]
     , fromList [Just Closed, Just Closed, Nothing, Nothing, Nothing, Just Closed, Just Closed]
     , fromList [Just Closed, Nothing, Just Closed, Nothing, Just Closed, Nothing, Just Closed]
-    , fromList [Nothing, Just Closed, Just Closed, Just PlayerB, Just Closed, Just Closed, Just PlayerB]
+    , fromList [Just PlayerB, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Just PlayerB]
     ])
 
 newGame :: Game
@@ -83,6 +86,10 @@ possibleMills = verticalMills ++ horizontalMills
 
 printMorris :: Morris -> IO ()
 printMorris s = putStr (unlines (map (map cellToChar) list))
+  where list = [toList x | x<-toList(rows s)]
+
+printMorrisString :: Morris -> String
+printMorrisString s = "\n" ++ (unlines (map (map cellToChar) list))
   where list = [toList x | x<-toList(rows s)]
 
 -- Translates Cell into printable values
@@ -206,7 +213,7 @@ millCreatedAI (m,s,c) pos del = do
 turnP1AI :: Game -> IO Game
 turnP1AI (m,s,c) = do
     putStrLn ((show c) ++ " turn")
-    let ((x,y),(x2,y2)) = bestMoveP1 (constructTreeP1 [[(m,[],[],c)]] c 10) c 
+    let ((x,y),(x2,y2)) = bestMoveP1 (m,(-1,-1),(-1,-1),c) 2   
     putStrLn ("AI choose : " ++ show (y,x))
     mT <- evaluate (addPiece m (y,x) c)
     g <- millCreatedAI (mT,s,c) (y,x) (y2,x2) 
@@ -299,30 +306,38 @@ isDone (m,t,c) = numberStones m PlayerA <4
 -- Int : Move that get us here
 -- Int : Stone removed to get us here
 -- Cell : Player who played the move
-type StateP1 = (Morris,[Pos],[Pos],Cell)
-type GameTree = [[StateP1]]
+type StateP1 = (Morris,Pos,Pos,Cell)
 
--- construct the GameTree on a given depth, ie for a number of turn
-constructTreeP1 :: GameTree -> Cell -> Int -> GameTree
-constructTreeP1 _ _ (-1) = [[]] 
-constructTreeP1 g p n = g ++ constructTreeP1 ([concat[addPieceAI (m,pos,del,lastPlayer) x p |x<-possiblePlaces m]|(m,pos,del,lastPlayer)<-last g]) (opponent p) (n-1)
+data Tree = Empty | Node StateP1  [Tree] deriving (Show) 
 
-addPieceAI :: StateP1 -> Pos -> Cell -> [StateP1]
-addPieceAI (m,pos,del,c) x p  | isInMill newM x = [(removePiece newM delete,pos++[x],del++[delete],p)|delete<-canBeRemoved newM (opponent p)]
-                              | otherwise =  [(newM,pos++[x],del,p)]
+consTreeP1 :: StateP1 -> Int -> Tree 
+consTreeP1 t 0              = (Node t [])  
+consTreeP1 (m,pos,del,p) n  = (Node (m,pos,del,p) [consTreeP1 state (n-1) | state<-newStates])
+  where newStates = concat[addPieceAI m x p|x<-possiblePlaces m]
+
+addPieceAI :: Morris -> Pos -> Cell -> [StateP1]
+addPieceAI m x p  | isInMill newM x = [(removePiece newM delete,x,delete,opponent p) | delete<-canBeRemoved newM (opponent p)]
+                  | otherwise =  [(newM,x,(-1,-1),opponent p)]
   where newM = addPiece m x p
 
--- first pos is to place, snd is to delete
-bestMoveP1 :: GameTree -> Cell -> (Pos,Pos)
-bestMoveP1 g p  | null b = (head $ a,(-1,-1))
-                | otherwise = (head a, head b)                 
-  where list = last $ init g
-        order (x,x',y) (x2,x2',y2) = compare y y2
-        (a,b,c) = maximumBy order [(pos,del,rateMorris m c)|(m,pos,del,c)<-list]
+
+minimax :: Tree -> Int -> Bool -> Int
+minimax (Node (m,pos,del,p) l) 0 b = heuristic m
+minimax (Node (m,pos,del,p) l) n b  | b = maximum [minimax child (n-1) False | child<-l]
+                                    | otherwise = minimum [minimax child (n-1) True  | child<-l]
+
+bestMoveP1 :: StateP1 -> Int -> (Pos,Pos)
+bestMoveP1 s n = (y,z)
+  where (Node node l) = consTreeP1 s n
+        order (a,b,c) (d,e,f) = compare a d
+        (x,y,z) = maximumBy order [(minimax (Node (m,pos,del,p) next) (n-1) False,pos,del) | (Node (m,pos,del,p) next)<-l]
+
+heuristic :: Morris -> Int
+heuristic m = 10*(countMils m PlayerB) - 9*(countMils m PlayerA)
 
 -- gives the current value of the Morris a rating 
 rateMorris :: Morris -> Cell -> Int
-rateMorris m c = f c - f (opponent c) +9 * (countMils m c)
+rateMorris m c = f c - f (opponent c) + 9*(countMils m c) - 12*(countMils m (opponent c))
   where list = concat [toList x | x<-toList(rows m)]
         f x  = length.filter (==(Just x)) $ list
 
