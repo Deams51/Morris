@@ -63,10 +63,10 @@ debugMorris = Morris (
 
 debugMorris2 = Morris ( 
      fromList [
-      fromList [Just PlayerA, Just Closed, Just Closed, Just PlayerA, Just Closed, Just Closed, Nothing]
-    , fromList [Just Closed, Nothing, Just Closed, Nothing, Just Closed, Nothing, Just Closed]
-    , fromList [Just Closed, Just Closed, Nothing, Nothing, Nothing, Just Closed, Just Closed]
-    , fromList [Nothing, Nothing, Nothing, Just Closed, Nothing, Nothing, Nothing]
+      fromList [Just PlayerA, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Just PlayerB]
+    , fromList [Just Closed, Just PlayerA, Just Closed, Nothing, Just Closed, Nothing, Just Closed]
+    , fromList [Just Closed, Just Closed, Just PlayerA, Nothing, Nothing, Just Closed, Just Closed]
+    , fromList [Nothing, Nothing, Nothing, Just Closed, Nothing, Nothing, Just PlayerB]
     , fromList [Just Closed, Just Closed, Nothing, Nothing, Nothing, Just Closed, Just Closed]
     , fromList [Just Closed, Nothing, Just Closed, Nothing, Just Closed, Nothing, Just Closed]
     , fromList [Nothing, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Just PlayerB]
@@ -244,7 +244,7 @@ millCreatedAI (m,s,c) pos del = do
 turnP1AI :: Game -> IO Game
 turnP1AI (m,s,c) = do
     putStrLn ((show c) ++ " turn")
-    let ((y,x),(y2,x2)) = bestMoveP1 (m,(-1,-1),(-1,-1),c) 2   
+    let ((x,y),(x2,y2)) = bestMoveP1 (m,(-1,-1),(-1,-1),c) 3
     putStrLn ("AI choose : " ++ show (x,y))
     mT <- evaluate (addPiece m (x,y) c)
     g <- millCreatedAI (mT,s,c) (x,y) (x2,y2) 
@@ -340,38 +340,36 @@ isDone (m,t,c) = numberStones m PlayerA <4
 
 type StateP1 = (Morris,Pos,Pos,Cell)
 
-data Tree = Empty | Node StateP1  [Tree] deriving (Show) 
+data Tree = Empty | Node StateP1  [Tree] deriving (Show)
 
+-- Return a tree of all the possible states given an init state
 consTreeP1 :: StateP1 -> Int -> Tree 
 consTreeP1 t 0              = (Node t [])  
 consTreeP1 (m,pos,del,p) n  = (Node (m,pos,del,p) [consTreeP1 state (n-1) | state<-newStates])
   where newStates = concat[addPieceAI m x p|x<-possiblePlaces m]
 
+-- Return the all possible morris from a given move in P1
 addPieceAI :: Morris -> Pos -> Cell -> [StateP1]
 addPieceAI m x p  | isInMill newM x = [(removePiece newM delete,x,delete,opponent p) | delete<-canBeRemoved newM (opponent p)]
                   | otherwise =  [(newM,x,(-1,-1),opponent p)]
   where newM = addPiece m x p
 
-
+-- Return the minimax value of a tree
 minimax :: Tree -> Int -> Bool -> Int
 minimax (Node (m,pos,del,p) l) 0 b = heuristic m
 minimax (Node (m,pos,del,p) l) n b  | b = maximum [minimax child (n-1) False | child<-l]
                                     | otherwise = minimum [minimax child (n-1) True  | child<-l]
 
+-- Return the best possible move depending on the depth given and the initial state
 bestMoveP1 :: StateP1 -> Int -> (Pos,Pos)
 bestMoveP1 s n = (y,z)
   where (Node node l) = consTreeP1 s n
         order (a,b,c) (d,e,f) = compare a d
         (x,y,z) = maximumBy order [(minimax (Node (m,pos,del,p) next) (n-1) False,pos,del) | (Node (m,pos,del,p) next)<-l]
 
+-- Calculate the value of a Morris
 heuristic :: Morris -> Int
-heuristic m = 5*(countMils m PlayerB) - 20*(countMils m PlayerA) + 2*(countCloseMils m PlayerB) - 3*(countCloseMils m PlayerA)
-
--- gives the current value of the Morris a rating 
-rateMorris :: Morris -> Cell -> Int
-rateMorris m c = f c - f (opponent c) + 9*(countMils m c) - 12*(countMils m (opponent c))
-  where list = concat [toList x | x<-toList(rows m)]
-        f x  = length.filter (==(Just x)) $ list
+heuristic m = 9*(countMils m PlayerB) - 6*(countMils m PlayerA)
 
 -- returns all possible moves of a player
 possibleMoves :: Morris -> Maybe Cell -> [(Pos,[Pos])]
@@ -397,7 +395,7 @@ possiblePlaces m = map (\(x,y) -> x)
 
 -- returns a morris as a flat list with coordintes
 morrisCoords :: Morris -> [(Pos, Maybe Cell)]
-morrisCoords m = zip [(x,y) | x<-[0..6], y<-[0..6]] 
+morrisCoords m = zip [(y,x) | x<-[0..6], y<-[0..6]] 
                 $ concat [toList x | x<-toList(rows m)] 
 
 -- counts the mils of a player
