@@ -48,6 +48,17 @@ debugMorris = Morris (
     , fromList [Just PlayerB, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Just PlayerB]
     ])
 
+debugMorris2 = Morris ( 
+     fromList [
+      fromList [Just PlayerA, Just Closed, Just Closed, Just PlayerA, Just Closed, Just Closed, Nothing]
+    , fromList [Just Closed, Nothing, Just Closed, Nothing, Just Closed, Nothing, Just Closed]
+    , fromList [Just Closed, Just Closed, Nothing, Nothing, Nothing, Just Closed, Just Closed]
+    , fromList [Nothing, Nothing, Nothing, Just Closed, Nothing, Nothing, Nothing]
+    , fromList [Just Closed, Just Closed, Nothing, Nothing, Nothing, Just Closed, Just Closed]
+    , fromList [Just Closed, Nothing, Just Closed, Nothing, Just Closed, Nothing, Just Closed]
+    , fromList [Nothing, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Just PlayerB]
+    ])
+
 newGame :: Game
 newGame = (blankMorris,0, PlayerA)
 
@@ -215,8 +226,8 @@ turnP1AI (m,s,c) = do
     putStrLn ((show c) ++ " turn")
     let ((x,y),(x2,y2)) = bestMoveP1 (m,(-1,-1),(-1,-1),c) 2   
     putStrLn ("AI choose : " ++ show (y,x))
-    mT <- evaluate (addPiece m (y,x) c)
-    g <- millCreatedAI (mT,s,c) (y,x) (y2,x2) 
+    mT <- evaluate (addPiece m (x,y) c)
+    g <- millCreatedAI (mT,s,c) (x,y) (x2,y2) 
     return g
 
 nextTurnP1AI :: Game ->  IO Game
@@ -333,7 +344,7 @@ bestMoveP1 s n = (y,z)
         (x,y,z) = maximumBy order [(minimax (Node (m,pos,del,p) next) (n-1) False,pos,del) | (Node (m,pos,del,p) next)<-l]
 
 heuristic :: Morris -> Int
-heuristic m = 10*(countMils m PlayerB) - 9*(countMils m PlayerA)
+heuristic m = 3*(countMils m PlayerB) - 10*(countMils m PlayerA) + 2*(countCloseMils m PlayerB) - 5*(countCloseMils m PlayerA)
 
 -- gives the current value of the Morris a rating 
 rateMorris :: Morris -> Cell -> Int
@@ -374,6 +385,11 @@ morrisCoords m = zip [(x,y) | x<-[0..6], y<-[0..6]]
 -- counts the mils of a player
 countMils :: Morris -> Cell -> Int
 countMils m c = length $ filter (>2) 
+                [length $ intersect x (myStonePos m c) | x<-possibleMills]
+
+-- counts the close mils of a player
+countCloseMils :: Morris -> Cell -> Int
+countCloseMils m c = length $ filter (>1) $ filter (<3) 
                 [length $ intersect x (myStonePos m c) | x<-possibleMills]
 
 -- Returns the position of all stones owned by player
