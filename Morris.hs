@@ -9,24 +9,24 @@ import Control.Monad (when)
 import Control.Exception.Base (evaluate)
 import Data.Maybe (fromJust)
 import Utils
-import Templates
-
 
 data Cell = PlayerA | PlayerB | Closed 
   deriving (Show, Eq)
 
-type Pos = (Int,Int)
-type Move = (Pos,Pos) 
-
-
+data Tree = Empty | Node StateP1  [Tree] 
+  deriving (Show) 
 
 data Morris = Morris {rows :: Seq( Seq(Maybe Cell)) }
   deriving ( Eq )
 
+type Pos = (Int,Int)
+type Move = (Pos,Pos) 
+type Game = (Morris, Int, Cell)
+type StateP1 = (Morris,Pos,Pos,Cell)
+
 instance Show Morris where
   show (Morris a) = printMorrisString (Morris a)
 
-type Game = (Morris, Int, Cell)
 
 blankMorris = Morris ( 
      fromList [
@@ -244,7 +244,7 @@ millCreatedAI (m,s,c) pos del = do
 turnP1AI :: Game -> IO Game
 turnP1AI (m,s,c) = do
     putStrLn ((show c) ++ " turn")
-    let ((x,y),(x2,y2)) = bestMoveP1 (m,(-1,-1),(-1,-1),c) 3
+    let ((x,y),(x2,y2)) = bestMoveP1 (m,(-1,-1),(-1,-1),c) 2
     putStrLn ("AI choose : " ++ show (x,y))
     mT <- evaluate (addPiece m (x,y) c)
     g <- millCreatedAI (mT,s,c) (x,y) (x2,y2) 
@@ -264,14 +264,14 @@ nextTurnP1AI (m,s,c) = do
 isPlayer :: Morris -> Pos -> Maybe Cell -> Bool
 isPlayer m pos p = getValue m pos == p
 
--- Checks if a move from posF to posT is valid
-  -- For a move to be valid from posF, posT must be in a possible mill with PosF 
+-- Checks if a move from posF to posT is valid, and that next cell is adjecent
 isValidMove :: Morris -> Pos -> Pos -> Maybe Cell -> Bool
 isValidMove m posF posT p = (isValidPos m posT)
                           && isPlayer m posF p 
                           && not (isNothing p)
                           && isAdjacent posF posT
 
+-- Figures out of Cells are adjecent to each other
 isAdjacent :: Pos -> Pos -> Bool
 isAdjacent (x,y) (xT,yT) = 
         or[elem (x,y) mills && elem (xT,yT) mills | mills<-possibleMills]
@@ -283,10 +283,12 @@ isAdjacent (x,y) (xT,yT) =
 distanceSquare :: Pos -> Pos -> Int
 distanceSquare (x,y) (x2,y2) = (x-x2)*(x-x2) + (y-y2)*(y-y2)
 
+-- Counts the number of stones for the player given
 numberStones :: Morris -> Cell -> Int
 numberStones m c = (length $ filter (== Just c) l )
   where l = concat [toList x | x<-toList(rows m)]
 
+-- Logic for phase 2
 turnP2 :: Game -> IO Game
 turnP2 (m,s,c) = do
     printMorris m
@@ -296,7 +298,9 @@ turnP2 (m,s,c) = do
     y<- promptIntFromRange "Stone y" (0,6)
     if (isPlayer m (x,y) (Just c))
       then do
-        putStrLn $ show $ [(x2,x1) | (x1,x2)<-filter (\(a,b) -> a == (x,y)) $ possibleMoves m (Just c)]
+        putStrLn $ show $ [(x2,x1) | (x1,x2)<-filter 
+                                                (\(a,b) -> a == (x,y)) 
+                                                $ possibleMoves m (Just c)]
         xT<- promptIntFromRange "To x" (0,6)
         yT<- promptIntFromRange "To y" (0,6)
         if (isValidMove m (x,y) (xT,yT) (Just c))
@@ -338,19 +342,17 @@ isDone (m,t,c) = numberStones m PlayerA <4
 
 --AI
 
-type StateP1 = (Morris,Pos,Pos,Cell)
-
-data Tree = Empty | Node StateP1  [Tree] deriving (Show)
-
 -- Return a tree of all the possible states given an init state
 consTreeP1 :: StateP1 -> Int -> Tree 
 consTreeP1 t 0              = (Node t [])  
-consTreeP1 (m,pos,del,p) n  = (Node (m,pos,del,p) [consTreeP1 state (n-1) | state<-newStates])
+consTreeP1 (m,pos,del,p) n  = (Node (m,pos,del,p) [consTreeP1 state (n-1) 
+                                                  | state<-newStates])
   where newStates = concat[addPieceAI m x p|x<-possiblePlaces m]
 
--- Return the all possible morris from a given move in P1
+-- adds a piece for the computer player, removes a piece if it gets a mill
 addPieceAI :: Morris -> Pos -> Cell -> [StateP1]
-addPieceAI m x p  | isInMill newM x = [(removePiece newM delete,x,delete,opponent p) | delete<-canBeRemoved newM (opponent p)]
+addPieceAI m x p  | isInMill newM x = [(removePiece newM delete,x,delete,opponent p) 
+                                      | delete<-canBeRemoved newM (opponent p)]
                   | otherwise =  [(newM,x,(-1,-1),opponent p)]
   where newM = addPiece m x p
 
@@ -365,7 +367,9 @@ bestMoveP1 :: StateP1 -> Int -> (Pos,Pos)
 bestMoveP1 s n = (y,z)
   where (Node node l) = consTreeP1 s n
         order (a,b,c) (d,e,f) = compare a d
-        (x,y,z) = maximumBy order [(minimax (Node (m,pos,del,p) next) (n-1) False,pos,del) | (Node (m,pos,del,p) next)<-l]
+        (x,y,z) = maximumBy order 
+                    [(minimax (Node (m,pos,del,p) next) (n-1) False,pos,del) 
+                    | (Node (m,pos,del,p) next)<-l]
 
 -- Calculate the value of a Morris
 heuristic :: Morris -> Int
@@ -375,6 +379,7 @@ heuristic m = 9*(countMils m PlayerB) - 6*(countMils m PlayerA)
 possibleMoves :: Morris -> Maybe Cell -> [(Pos,[Pos])]
 possibleMoves m c = [cellMoves m x c | x <-myCells m c]
 
+-- returns the positions of the players stones
 myCells :: Morris -> Maybe Cell -> [Pos]
 myCells m c = filter (\x -> isPlayer m x c) (nub $ concat possibleMills)
 
@@ -410,7 +415,8 @@ countCloseMils m c = length $ filter (>1) $ filter (<3)
 
 -- Returns the position of all stones owned by player
 myStonePos :: Morris -> Cell -> [Pos]
-myStonePos m c = map (\(x,y) -> x) $ filter (\(x,y) -> y == (Just c)) $ morrisCoords m
+myStonePos m c = map (\(x,y) -> x) $ filter (\(x,y) -> y == (Just c)) 
+                                            $ morrisCoords m
 
 
 -- Properties related func 
