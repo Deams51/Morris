@@ -244,8 +244,8 @@ millCreatedAI (m,s,c) pos del = do
 turnP1AI :: Game -> IO Game
 turnP1AI (m,s,c) = do
     putStrLn ((show c) ++ " turn")
-    let ((x,y),(x2,y2)) = bestMoveP1 (m,(-1,-1),(-1,-1),c) 2   
-    putStrLn ("AI choose : " ++ show (y,x))
+    let ((y,x),(y2,x2)) = bestMoveP1 (m,(-1,-1),(-1,-1),c) 2   
+    putStrLn ("AI choose : " ++ show (x,y))
     mT <- evaluate (addPiece m (x,y) c)
     g <- millCreatedAI (mT,s,c) (x,y) (x2,y2) 
     return g
@@ -337,9 +337,7 @@ isDone (m,t,c) = numberStones m PlayerA <4
 
 
 --AI
--- Int : Move that get us here
--- Int : Stone removed to get us here
--- Cell : Player who played the move
+
 type StateP1 = (Morris,Pos,Pos,Cell)
 
 data Tree = Empty | Node StateP1  [Tree] deriving (Show) 
@@ -367,7 +365,7 @@ bestMoveP1 s n = (y,z)
         (x,y,z) = maximumBy order [(minimax (Node (m,pos,del,p) next) (n-1) False,pos,del) | (Node (m,pos,del,p) next)<-l]
 
 heuristic :: Morris -> Int
-heuristic m = 3*(countMils m PlayerB) - 10*(countMils m PlayerA) + 2*(countCloseMils m PlayerB) - 5*(countCloseMils m PlayerA)
+heuristic m = 5*(countMils m PlayerB) - 20*(countMils m PlayerA) + 2*(countCloseMils m PlayerB) - 3*(countCloseMils m PlayerA)
 
 -- gives the current value of the Morris a rating 
 rateMorris :: Morris -> Cell -> Int
