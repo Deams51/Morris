@@ -61,6 +61,17 @@ debugMorris = Morris (
     , fromList [Just PlayerB, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Just PlayerB]
     ])
 
+debugMorris2 = Morris ( 
+     fromList [
+      fromList [Just PlayerA, Just Closed, Just Closed, Just PlayerA, Just Closed, Just Closed, Nothing]
+    , fromList [Just Closed, Nothing, Just Closed, Nothing, Just Closed, Nothing, Just Closed]
+    , fromList [Just Closed, Just Closed, Nothing, Nothing, Nothing, Just Closed, Just Closed]
+    , fromList [Nothing, Nothing, Nothing, Just Closed, Nothing, Nothing, Nothing]
+    , fromList [Just Closed, Just Closed, Nothing, Nothing, Nothing, Just Closed, Just Closed]
+    , fromList [Just Closed, Nothing, Just Closed, Nothing, Just Closed, Nothing, Just Closed]
+    , fromList [Nothing, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Just PlayerB]
+    ])
+
 p2Morris = Morris ( 
      fromList [
       fromList [Just PlayerA, Just Closed, Just Closed, Nothing, Just Closed, Just Closed, Just PlayerA]
